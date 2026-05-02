@@ -1,0 +1,17 @@
+[formatter.clang-format]
+command = "clang-format"
+options = ["-i"]
+includes = ["*.cpp", "*.h", "*.ino"]
+
+[formatter.nixfmt]
+command = "nixfmt"
+includes = ["*.nix"]
+
+[formatter.prettier]
+command = "prettier"
+options = ["--write"]
+includes = ["*.json", "*.md", "*.yml", "*.yaml"]
+
+[formatter.python]
+command = "black"
+includes = ["*.py"]

@@ -1,0 +1,9 @@
+result*
+.direnv/
+.venv/
+__pycache__/
+*.pyc
+.env
+node_modules/
+target/
+dist/
