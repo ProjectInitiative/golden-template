@@ -3,7 +3,7 @@ set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 TEMPLATES=("python-uv2nix" "rust-crane" "go" "node-js" "embedded" "container" "dev-shell" "nix-library" "nixos-config")
-EXCLUDED_FROM_BUILD=("nixos-config" "embedded" "dev-shell" "nix-library")  # need special toolchains or no package
+EXCLUDED_FROM_BUILD=("nixos-config" "dev-shell" "nix-library")  # no package build artifact
 PASS=0
 FAIL=0
 FAILED_TEMPLATES=""
