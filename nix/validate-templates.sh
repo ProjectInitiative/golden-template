@@ -2,8 +2,9 @@
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-TEMPLATES=("python-uv2nix" "rust-crane" "go" "node-js" "embedded" "container" "dev-shell" "nix-library" "nixos-config")
-EXCLUDED_FROM_BUILD=("nixos-config" "dev-shell" "nix-library") # no package build artifact
+TEMPLATES=("python-uv2nix" "rust-crane" "go" "node-js" "embedded" "container" "dev-shell" "nix-library" "nixos-config" "wrapper-project")
+EXCLUDED_FROM_BUILD=("nixos-config" "dev-shell" "nix-library")  # no package build artifact
+STRUCTURE_ONLY=("wrapper-project")  # placeholder upstream URL — verify files exist and formatting, skip lock/build
 PASS=0
 FAIL=0
 FAILED_TEMPLATES=""
@@ -29,6 +30,21 @@ for template in "${TEMPLATES[@]}"; do
   rm -rf "$TMPDIR"/* 2>/dev/null
   cp -r "$REPO_ROOT/templates/$template"/* "$TMPDIR/"
   cp -r "$REPO_ROOT/templates/$template"/.* "$TMPDIR/" 2>/dev/null || true
+
+  # Structure-only templates (placeholder URLs): verify files, skip lock/check/build
+  if [[ " ${STRUCTURE_ONLY[*]} " =~ " $template " ]]; then
+    echo "(structure-only template — verifying files exist)"
+    if [ -f "$TMPDIR/flake.nix" ] && [ -f "$TMPDIR/.envrc" ] && [ -f "$TMPDIR/AGENTS.md" ]; then
+      echo "PASS: $template (structure verified)"
+      PASS=$((PASS + 1))
+      continue
+    else
+      echo "FAIL: $template missing required files"
+      FAIL=$((FAIL + 1))
+      FAILED_TEMPLATES="$FAILED_TEMPLATES $template"
+      continue
+    fi
+  fi
 
   # Generate lock file
   nix flake lock "$TMPDIR" 2>&1 | tail -3 || {

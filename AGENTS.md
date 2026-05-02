@@ -104,7 +104,8 @@ See `docs/project-type-reference.md` for detailed patterns. Quick summary:
 | Container       | (built-in)                | `dockerTools.buildImage` / `streamLayeredImage` |
 | Dev shell only  | (none needed)             | `mkShell`                                       |
 | Nix library     | (none needed)             | `lib` output set                                |
-| NixOS config    | (various)                 | `nixosSystem`                                   |
+| NixOS config | (various) | `nixosSystem` |
+| Wrapper project | `upstream-src` (flake=false) | `stdenv.mkDerivation` + `.direnv/vendor/` |
 
 ## Template Scaffolding
 

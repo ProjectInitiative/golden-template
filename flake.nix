@@ -133,6 +133,10 @@
           path = ./templates/nixos-config;
           description = "NixOS system configuration flake";
         };
+        wrapper = {
+          path = ./templates/wrapper-project;
+          description = "Nix wrapper around upstream source (no code in repo, .direnv/vendor/ workflow)";
+        };
       };
     };
 }

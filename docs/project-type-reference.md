@@ -182,6 +182,32 @@ outputs = { self, nixpkgs }: {
 };
 ```
 
+## 10. Wrapper Project (External Source)
+
+**Inputs:** `nixpkgs`, `flake-utils`, `upstream-src` (flake = false)
+**Builder:** `stdenv.mkDerivation` (or project-specific) using fetched source
+**Key files:** `flake.nix`, `.envrc`, `nix/` (optional build logic)
+
+**Pattern:** The repo contains Nix build instructions but NOT the source code. Source is fetched via flake inputs from upstream.
+
+```nix
+inputs = {
+  upstream-src = {
+    url = "github:owner/project/v1.0.0";
+    flake = false;
+  };
+};
+```
+
+**Local iteration:** `setup-local-source` copies source from Nix store to `.direnv/vendor/` for editing. `build-local` builds from the local copy.
+
+**NixOS modules:** Optionally exposes `nixosModules.default` for system services (e.g., JMRI server from dcc-ex).
+
+**Use cases:**
+- Personal forks/tinkering that won't merge upstream
+- Projects with custom patches applied via Nix
+- Nix-based wrappers around upstream releases
+
 ## 9. NixOS Configuration
 
 **Inputs:** `nixpkgs`, `flake-utils`, `(various)`
