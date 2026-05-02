@@ -16,6 +16,7 @@ Every project exposes a flake with standardized outputs:
 - `formatter.${system}` — Code formatter (nixfmt or treefmt wrapper)
 
 This standardization means:
+
 - CI scripts are trivial (`nix flake check && nix build`)
 - Agents know exactly what to call
 - Users get a consistent experience across projects
@@ -38,10 +39,10 @@ All flakes support `x86_64-linux` and `aarch64-linux` at minimum, using `flake-u
 
 Recognizing that sandboxed builds (`nix build`) can be slow, we support two workflows:
 
-| Workflow | Command | Use When |
-|----------|---------|----------|
-| **Iterative dev** | `nix develop --command cargo build` | Fast iteration during development |
-| **Sandbox verification** | `nix build` | Final validation before commit/CI |
+| Workflow                 | Command                             | Use When                          |
+| ------------------------ | ----------------------------------- | --------------------------------- |
+| **Iterative dev**        | `nix develop --command cargo build` | Fast iteration during development |
+| **Sandbox verification** | `nix build`                         | Final validation before commit/CI |
 
 The `nix develop` approach uses the exact same dependencies (via `inputsFrom`) but skips the sandbox, allowing incremental compilation.
 
@@ -54,6 +55,7 @@ Common patterns (container build/push, CI scripts, formatter configs) are extrac
 ### Python (uv2nix)
 
 Modern Python projects avoid `python3.withPackages` and instead use `uv2nix` + `pyproject.nix` for:
+
 - Lockfile-pinned dependencies (via `uv.lock`)
 - Proper build-system awareness (setuptools, maturin, etc.)
 - C-extension handling via `overrideScope`
@@ -61,6 +63,7 @@ Modern Python projects avoid `python3.withPackages` and instead use `uv2nix` + `
 ### Rust (crane)
 
 Rust projects use `crane` (not `buildRustPackage`) for:
+
 - Split dependency caching (`buildDepsOnly` + `buildPackage`)
 - Incremental compilation in dev shell
 - Proper `sys` crate handling (pkg-config, system libs)
@@ -68,6 +71,7 @@ Rust projects use `crane` (not `buildRustPackage`) for:
 ### Embedded (ESP-IDF / Arduino)
 
 Embedded projects use `esp-dev` for ESP-IDF toolchain or `arduino-nix` for Arduino toolchain, with:
+
 - All tooling provided via Nix (no manual SDK installs)
 - Host-side tests in the same flake
 - Firmware build artifacts exposed as `packages.default`

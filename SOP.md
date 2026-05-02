@@ -27,6 +27,7 @@ git add -A && git commit -m "Initial scaffold from golden-template"
 See `MIGRATION_GUIDE.md` for detailed steps.
 
 High-level process:
+
 1. **Analyze**: Identify build system, runtime deps, test framework
 2. **Scaffold**: Start from the closest template
 3. **Populate**: Move dependencies from `package.json`/`Cargo.toml`/`pyproject.toml` into `flake.nix`

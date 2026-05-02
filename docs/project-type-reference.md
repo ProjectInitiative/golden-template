@@ -55,6 +55,7 @@ Quick reference for each project type's flake pattern, inputs, and outputs.
 ```
 
 **Sys crate handling:**
+
 ```nix
 craneLib.buildPackage {
   src = craneLib.cleanCargoSource ./.;
@@ -107,12 +108,14 @@ packages.default = pkgs.buildNpmPackage {
 **Key files:** `CMakeLists.txt`, `flake.nix`, `nix/scripts.nix`, `nix/dependencies.nix`
 
 **Structure:**
+
 - `flake.nix`: Exports packages (firmware, tests) + devShell via `esp-dev.devShells`
 - `nix/scripts.nix`: Wrapper scripts (build-firmware, flash, monitor, ci-ready)
 - `nix/dependencies.nix`: Vendored managed components
 - `treefmt.toml`: C++ formatting via clang-format
 
 **CI considerations:**
+
 - May need AppArmor workaround for bubblewrap
 - Build artifacts: `.bin`, `.elf`, partitions, bootloader
 - Nightly releases for firmware binaries
@@ -132,6 +135,7 @@ packages.default = pkgs.dockerTools.buildImage {
 ```
 
 **Multi-arch push:** Use `ops-utils`:
+
 ```nix
 packages.push-multi-arch = ops-utils.lib.mkPushMultiArch {
   inherit pkgs;

@@ -1,13 +1,14 @@
 { pkgs }:
 
 let
-  mkFormattingTools = pkgs: with pkgs; [
-    treefmt
-    clang-tools
-    nixfmt-rfc-style
-    nodePackages.prettier
-    black
-  ];
+  mkFormattingTools =
+    pkgs: with pkgs; [
+      treefmt
+      clang-tools
+      nixfmt
+      prettier
+      black
+    ];
 
   buildFirmware = pkgs.writeShellScriptBin "build-firmware" ''
     export IDF_COMPONENT_MANAGER=1

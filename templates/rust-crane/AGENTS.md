@@ -6,13 +6,13 @@ This project uses **crane** for incremental Rust builds. The toolchain is pinned
 
 ## Available Commands
 
-| Command | Description |
-|---------|-------------|
-| `nix develop --command cargo build` | Build (incremental) |
-| `nix develop --command cargo test` | Run tests |
-| `nix develop --command cargo fmt` | Format code |
-| `nix develop --command cargo clippy` | Lint |
-| `nix build` | Full sandboxed build |
+| Command                              | Description          |
+| ------------------------------------ | -------------------- |
+| `nix develop --command cargo build`  | Build (incremental)  |
+| `nix develop --command cargo test`   | Run tests            |
+| `nix develop --command cargo fmt`    | Format code          |
+| `nix develop --command cargo clippy` | Lint                 |
+| `nix build`                          | Full sandboxed build |
 
 ## Mandatory Pre-Submission
 

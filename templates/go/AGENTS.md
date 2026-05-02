@@ -6,13 +6,13 @@ Standard Go module built with `buildGoModule` in Nix.
 
 ## Available Commands
 
-| Command | Description |
-|---------|-------------|
-| `nix develop --command go build` | Build |
-| `nix develop --command go test ./...` | Run tests |
-| `nix develop --command go fmt ./...` | Format code |
-| `nix develop --command go vet ./...` | Vet code |
-| `nix build` | Full sandboxed build |
+| Command                               | Description          |
+| ------------------------------------- | -------------------- |
+| `nix develop --command go build`      | Build                |
+| `nix develop --command go test ./...` | Run tests            |
+| `nix develop --command go fmt ./...`  | Format code          |
+| `nix develop --command go vet ./...`  | Vet code             |
+| `nix build`                           | Full sandboxed build |
 
 ## Mandatory Pre-Submission
 

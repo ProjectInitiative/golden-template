@@ -7,13 +7,23 @@
     ops-utils.url = "github:projectinitiative/ops-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils, ops-utils }:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+      ops-utils,
+    }:
     let
-      supportedSystems = [ "x86_64-linux" "aarch64-linux" ];
+      supportedSystems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
     in
     {
-      packages = forAllSystems (system:
+      packages = forAllSystems (
+        system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
           ops = ops-utils.lib.mkUtils { inherit pkgs; };
@@ -43,24 +53,29 @@
         }
       );
 
-      apps = forAllSystems (system:
+      apps = forAllSystems (
+        system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
           ops = ops-utils.lib.mkUtils { inherit pkgs; };
           opsApps = ops-utils.lib.mkApps { inherit pkgs; } ops;
         in
-        opsApps // {
+        opsApps
+        // {
           build-all = {
             type = "app";
-            program = toString (pkgs.writeShellScript "build-all" ''
-              nix build .#default -o result-image
-              docker load < result-image
-            '');
+            program = toString (
+              pkgs.writeShellScript "build-all" ''
+                nix build .#default -o result-image
+                docker load < result-image
+              ''
+            );
           };
         }
       );
 
-      devShells = forAllSystems (system:
+      devShells = forAllSystems (
+        system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
         in
@@ -79,8 +94,26 @@
         }
       );
 
-      formatter = forAllSystems (system:
-        nixpkgs.legacyPackages.${system}.nixfmt-rfc-style
+      checks = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          formatting =
+            pkgs.runCommand "check-formatting"
+              {
+                nativeBuildInputs = [ pkgs.nixfmt ];
+                src = ./.;
+              }
+              ''
+                nixfmt --check $src/*.nix
+                touch $out
+              '';
+          build = self.packages.${system}.default;
+        }
       );
+
+      formatter = forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt);
     };
 }

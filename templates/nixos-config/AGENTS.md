@@ -16,10 +16,10 @@ modules/
 
 ## Available Commands
 
-| Command | Description |
-|---------|-------------|
-| `nix develop` | Enter dev shell |
-| `sudo nixos-rebuild switch --flake .#my-host` | Apply config |
+| Command                                                                | Description            |
+| ---------------------------------------------------------------------- | ---------------------- |
+| `nix develop`                                                          | Enter dev shell        |
+| `sudo nixos-rebuild switch --flake .#my-host`                          | Apply config           |
 | `nix build .#nixosConfigurations.my-host.config.system.build.toplevel` | Build without applying |
 
 ## Mandatory Pre-Submission

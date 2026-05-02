@@ -6,8 +6,14 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
       in
@@ -16,7 +22,7 @@
           pname = "my-app";
           version = "0.1.0";
           src = ./.;
-          vendorHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+          vendorHash = null;
           subPackages = [ "." ];
           nativeBuildInputs = with pkgs; [ ];
           buildInputs = with pkgs; [ ];
@@ -37,27 +43,37 @@
         };
 
         checks = {
-          formatting = pkgs.runCommand "check-formatting" {
-            nativeBuildInputs = with pkgs; [ nixfmt-rfc-style go ];
-            src = ./.;
-          } ''
-            cd $src
-            nixfmt --check *.nix
-            [ -z "$(gofmt -l .)" ] || exit 1
-            touch $out
-          '';
+          formatting =
+            pkgs.runCommand "check-formatting"
+              {
+                nativeBuildInputs = with pkgs; [
+                  nixfmt
+                  go
+                ];
+                src = ./.;
+              }
+              ''
+                cd $src
+                nixfmt --check *.nix
+                [ -z "$(gofmt -l .)" ] || exit 1
+                touch $out
+              '';
 
-          tests = pkgs.runCommand "run-tests" {
-            nativeBuildInputs = [ self.devShells.${system}.default ];
-            src = ./.;
-          } ''
-            cd $src
-            go test ./...
-            touch $out
-          '';
+          tests =
+            pkgs.runCommand "run-tests"
+              {
+                nativeBuildInputs = with pkgs; [ go ];
+                src = ./.;
+              }
+              ''
+                export HOME="$TMPDIR"
+                cd $src
+                go test ./...
+                touch $out
+              '';
         };
 
-        formatter = pkgs.nixfmt-rfc-style;
+        formatter = pkgs.nixfmt;
       }
     );
 }

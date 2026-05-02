@@ -6,12 +6,12 @@ Nix-built OCI container images using `dockerTools`. Multi-arch push via `ops-uti
 
 ## Available Commands
 
-| Command | Description |
-|---------|-------------|
-| `nix run .#build-all` | Build all images and load into Docker |
-| `nix run .#push-multi-arch -- <package> <image-name> <owner> [tag]` | Build + push multi-arch |
-| `nix run .#build-image -- <flake-ref>` | Build and load single image |
-| `nix build .#default` | Sandboxed build of container image |
+| Command                                                             | Description                           |
+| ------------------------------------------------------------------- | ------------------------------------- |
+| `nix run .#build-all`                                               | Build all images and load into Docker |
+| `nix run .#push-multi-arch -- <package> <image-name> <owner> [tag]` | Build + push multi-arch               |
+| `nix run .#build-image -- <flake-ref>`                              | Build and load single image           |
+| `nix build .#default`                                               | Sandboxed build of container image    |
 
 ## Mandatory Pre-Submission
 

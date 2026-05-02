@@ -6,13 +6,13 @@ ESP-IDF development environment managed by Nix via `esp-dev`. Arduino libraries 
 
 ## Available Commands
 
-| Command | Description |
-|---------|-------------|
-| `build-firmware` | Build firmware via idf.py |
-| `upload-firmware` | Upload via serial or OTA |
-| `monitor-firmware` | Monitor serial logs |
-| `ci-ready` | Run formatting + tests + build |
-| `treefmt` | Format all code |
+| Command            | Description                    |
+| ------------------ | ------------------------------ |
+| `build-firmware`   | Build firmware via idf.py      |
+| `upload-firmware`  | Upload via serial or OTA       |
+| `monitor-firmware` | Monitor serial logs            |
+| `ci-ready`         | Run formatting + tests + build |
+| `treefmt`          | Format all code                |
 
 ## Mandatory Pre-Submission
 

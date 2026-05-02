@@ -6,9 +6,9 @@ This project provides a Nix development shell with tools but does not produce a 
 
 ## Available Commands
 
-| Command | Description |
-|---------|-------------|
-| `nix develop` | Enter dev shell |
+| Command           | Description       |
+| ----------------- | ----------------- |
+| `nix develop`     | Enter dev shell   |
 | `nix flake check` | Verify formatting |
 
 ## Important Notes

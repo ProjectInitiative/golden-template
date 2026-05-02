@@ -1,0 +1,13 @@
+{
+  "name": "my-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "echo 'ok'"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

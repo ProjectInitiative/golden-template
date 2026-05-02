@@ -14,9 +14,9 @@ flake.nix         # Exposes lib + devShell
 
 ## Available Commands
 
-| Command | Description |
-|---------|-------------|
-| `nix develop` | Enter dev shell |
+| Command           | Description       |
+| ----------------- | ----------------- |
+| `nix develop`     | Enter dev shell   |
 | `nix flake check` | Verify formatting |
 
 ## Adding a New Function

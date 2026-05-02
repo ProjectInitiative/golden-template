@@ -2,11 +2,11 @@
 
 ## Comparison
 
-| Approach | Action | Pros | Cons | Best For |
-|----------|--------|------|------|----------|
-| **DeterminateSystems** | `nix-installer-action@v10` | Handles flakes natively; detects config issues; built-in Magic Nix Cache | No fine-grained Nix config control | Most projects; the default |
-| **cachix/install-nix-action** | `cachix/install-nix-action@v25` | Supports custom `nix.conf` via `extra_nix_config`; battle-tested | Older; requires manual flake setup | Projects needing custom Nix config |
-| **Self-hosted runner** | Manual Nix install | Full control; air-gapped; no rate limits | Maintenance overhead | Air-gapped or custom runner environments |
+| Approach                      | Action                          | Pros                                                                     | Cons                               | Best For                                 |
+| ----------------------------- | ------------------------------- | ------------------------------------------------------------------------ | ---------------------------------- | ---------------------------------------- |
+| **DeterminateSystems**        | `nix-installer-action@v10`      | Handles flakes natively; detects config issues; built-in Magic Nix Cache | No fine-grained Nix config control | Most projects; the default               |
+| **cachix/install-nix-action** | `cachix/install-nix-action@v25` | Supports custom `nix.conf` via `extra_nix_config`; battle-tested         | Older; requires manual flake setup | Projects needing custom Nix config       |
+| **Self-hosted runner**        | Manual Nix install              | Full control; air-gapped; no rate limits                                 | Maintenance overhead               | Air-gapped or custom runner environments |
 
 ## Recommendation
 
@@ -99,9 +99,9 @@ For container image projects that build for multiple architectures:
 
 ## Caching Strategy
 
-| Cache Type | Tool | Use Case |
-|------------|------|----------|
-| Magic Nix Cache | DeterminateSystems | Zero-config, ephemeral CI caching |
-| Attic | self-hosted | Persistent cross-project cache |
-| Cachix | SaaS | Simple per-project cache |
-| GitHub Actions Cache | `nix-actions/cache` | Free, no external service |
+| Cache Type           | Tool                | Use Case                          |
+| -------------------- | ------------------- | --------------------------------- |
+| Magic Nix Cache      | DeterminateSystems  | Zero-config, ephemeral CI caching |
+| Attic                | self-hosted         | Persistent cross-project cache    |
+| Cachix               | SaaS                | Simple per-project cache          |
+| GitHub Actions Cache | `nix-actions/cache` | Free, no external service         |

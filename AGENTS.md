@@ -58,7 +58,7 @@ Every project flake should follow this skeleton:
           tests = self.packages.${system}.tests or self.packages.${system}.default;
         };
 
-        formatter = pkgs.nixfmt-rfc-style;
+        formatter = pkgs.nixfmt;
       }
     );
 }
@@ -73,6 +73,7 @@ nix develop --command agent-check   # or equivalent: ci-ready, pre-submit, etc.
 ```
 
 This enforces:
+
 1. Clean working tree (all changes committed)
 2. Formatting compliance (`treefmt --fail-on-change`)
 3. Unit tests passing
@@ -83,27 +84,27 @@ This enforces:
 
 See `docs/ci-strategies.md` for a comparison of CI approaches:
 
-| Approach | Action | Use Case |
-|----------|--------|----------|
-| **DeterminateSystems** | `nix-installer-action` | Most projects; modern, handles flakes natively |
-| **cachix/install-nix-action** | `install-nix-action` | When you need fine-grained Nix config control or specific channels |
-| **Self-hosted** | Manual Nix install | Air-gapped or custom runner environments |
+| Approach                      | Action                 | Use Case                                                           |
+| ----------------------------- | ---------------------- | ------------------------------------------------------------------ |
+| **DeterminateSystems**        | `nix-installer-action` | Most projects; modern, handles flakes natively                     |
+| **cachix/install-nix-action** | `install-nix-action`   | When you need fine-grained Nix config control or specific channels |
+| **Self-hosted**               | Manual Nix install     | Air-gapped or custom runner environments                           |
 
 ## Project Type Reference
 
 See `docs/project-type-reference.md` for detailed patterns. Quick summary:
 
-| Type | Input | Builder |
-|------|-------|---------|
-| Python (uv2nix) | `uv2nix`, `pyproject.nix` | `pythonSet.mkVirtualEnv` |
-| Rust (crane) | `crane` | `craneLib.buildPackage` (split deps/src) |
-| Go | (built-in) | `buildGoModule` |
-| Node/JS | (built-in) | `buildNpmPackage` |
-| Embedded | `esp-dev`, `arduino-nix` | `stdenv.mkDerivation` + toolchain |
-| Container | (built-in) | `dockerTools.buildImage` / `streamLayeredImage` |
-| Dev shell only | (none needed) | `mkShell` |
-| Nix library | (none needed) | `lib` output set |
-| NixOS config | (various) | `nixosSystem` |
+| Type            | Input                     | Builder                                         |
+| --------------- | ------------------------- | ----------------------------------------------- |
+| Python (uv2nix) | `uv2nix`, `pyproject.nix` | `pythonSet.mkVirtualEnv`                        |
+| Rust (crane)    | `crane`                   | `craneLib.buildPackage` (split deps/src)        |
+| Go              | (built-in)                | `buildGoModule`                                 |
+| Node/JS         | (built-in)                | `buildNpmPackage`                               |
+| Embedded        | `esp-dev`, `arduino-nix`  | `stdenv.mkDerivation` + toolchain               |
+| Container       | (built-in)                | `dockerTools.buildImage` / `streamLayeredImage` |
+| Dev shell only  | (none needed)             | `mkShell`                                       |
+| Nix library     | (none needed)             | `lib` output set                                |
+| NixOS config    | (various)                 | `nixosSystem`                                   |
 
 ## Template Scaffolding
 
@@ -118,6 +119,30 @@ nix flake init -t github:projectinitiative/golden-template#python
 ```
 
 If the template does not cover your exact needs:
+
 1. Start from the closest template
 2. Consult `docs/project-type-reference.md` for the full pattern
 3. Run `nix flake check && nix build` to verify
+
+## Self-Validation (This Repo)
+
+This repository validates itself to ensure all templates remain correct:
+
+```bash
+# Quick check (formatting + eval)
+nix flake check
+
+# Full template validation
+nix develop --command validate-templates
+
+# Pre-submission (everything)
+nix develop --command agent-check
+```
+
+The `validate-templates` script:
+
+1. For each template, creates a temp directory
+2. Runs `nix flake init -t .#<template>`
+3. Runs `nix flake check` (validates eval + formatting)
+4. Runs `nix build` (for templates that support it)
+5. Reports pass/fail for each template

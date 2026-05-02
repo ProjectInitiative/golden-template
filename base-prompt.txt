@@ -25,7 +25,7 @@
   * `packages.${system}.default`: Main build artifact
   * `devShells.${system}.default`: Development environment (inherit deps from package)
   * `checks.${system}`: `formatting`, `tests`
-  * `formatter.${system}`: `nixfmt-rfc-style` or treefmt wrapper
+  * `formatter.${system}`: `nixfmt` or treefmt wrapper
 * `.envrc`: Contains `use flake`
 * `AGENTS.md`: Project-specific agent working guide
 * `treefmt.toml`: Formatter configuration (if using treefmt)

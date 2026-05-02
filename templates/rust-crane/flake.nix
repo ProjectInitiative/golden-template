@@ -8,8 +8,16 @@
     fenix.url = "github:nix-community/fenix";
   };
 
-  outputs = { self, nixpkgs, flake-utils, crane, fenix }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+      crane,
+      fenix,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
@@ -31,9 +39,12 @@
 
       in
       {
-        packages.default = craneLib.buildPackage (commonArgs // {
-          inherit cargoArtifacts;
-        });
+        packages.default = craneLib.buildPackage (
+          commonArgs
+          // {
+            inherit cargoArtifacts;
+          }
+        );
 
         devShells.default = pkgs.mkShell {
           inputsFrom = [ self.packages.${system}.default ];
@@ -50,26 +61,27 @@
         };
 
         checks = {
-          formatting = pkgs.runCommand "check-formatting" {
-            nativeBuildInputs = with pkgs; [ nixfmt-rfc-style rustfmt ];
-            src = ./.;
-          } ''
-            nixfmt --check $src/*.nix
-            rustfmt --check $src/src/**/*.rs
-            touch $out
-          '';
+          formatting =
+            pkgs.runCommand "check-formatting"
+              {
+                nativeBuildInputs = with pkgs; [
+                  nixfmt
+                  cargo
+                  rustfmt
+                ];
+                src = ./.;
+              }
+              ''
+                cd $src
+                nixfmt --check *.nix
+                cargo fmt --check
+                touch $out
+              '';
 
-          tests = pkgs.runCommand "run-tests" {
-            nativeBuildInputs = [ self.devShells.${system}.default ];
-            src = ./.;
-          } ''
-            cd $src
-            cargo test
-            touch $out
-          '';
+          tests = self.packages.${system}.default;
         };
 
-        formatter = pkgs.nixfmt-rfc-style;
+        formatter = pkgs.nixfmt;
       }
     );
 }

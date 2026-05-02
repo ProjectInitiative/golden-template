@@ -7,8 +7,15 @@
     esp-dev.url = "github:mirrexagon/nixpkgs-esp-dev";
   };
 
-  outputs = { self, nixpkgs, flake-utils, esp-dev }:
-    flake-utils.lib.eachSystem [ "x86_64-linux" "aarch64-linux" ] (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+      esp-dev,
+    }:
+    flake-utils.lib.eachSystem [ "x86_64-linux" "aarch64-linux" ] (
+      system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
@@ -52,7 +59,10 @@
         packages.tests = pkgs.stdenv.mkDerivation {
           name = "host-tests";
           src = ./.;
-          nativeBuildInputs = [ pkgs.gcc pkgs.python3 ];
+          nativeBuildInputs = [
+            pkgs.gcc
+            pkgs.python3
+          ];
           buildPhase = ''
             python3 tools/test_runner.py
           '';
@@ -60,29 +70,36 @@
         };
 
         checks = {
-          formatting = pkgs.runCommand "check-formatting" {
-            nativeBuildInputs = mkFormattingTools pkgs;
-            src = ./.;
-          } ''
-            cp -r $src/. .
-            chmod -R +w .
-            treefmt --fail-on-change
-            touch $out
-          '';
+          formatting =
+            pkgs.runCommand "check-formatting"
+              {
+                nativeBuildInputs = mkFormattingTools pkgs;
+                src = ./.;
+              }
+              ''
+                export HOME="$TMPDIR"
+                cp -r $src/. .
+                chmod -R +w .
+                treefmt --fail-on-change
+                touch $out
+              '';
 
-          tests = self.packages.${system}.tests;
+          build = self.packages.${system}.default;
         };
 
         devShells.default = esp-dev.devShells.${system}.esp-idf-full.overrideAttrs (old: {
-          buildInputs = old.buildInputs ++ mkFormattingTools pkgs ++ [
-            pkgs.python3
-            pkgs.esptool
-            buildFirmware
-            uploadFirmware
-            monitorFirmware
-            ciReady
-            agentCheck
-          ];
+          buildInputs =
+            old.buildInputs
+            ++ mkFormattingTools pkgs
+            ++ [
+              pkgs.python3
+              pkgs.esptool
+              buildFirmware
+              uploadFirmware
+              monitorFirmware
+              ciReady
+              agentCheck
+            ];
 
           shellHook = ''
             ${old.shellHook or ""}
@@ -91,7 +108,7 @@
           '';
         });
 
-        formatter = pkgs.nixfmt-rfc-style;
+        formatter = pkgs.nixfmt;
       }
     );
 }

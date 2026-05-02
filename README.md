@@ -67,9 +67,9 @@ templates/
 
 Every project flake provides:
 
-| Output | Description |
-|--------|-------------|
-| `packages.default` | Main build artifact |
+| Output              | Description                                     |
+| ------------------- | ----------------------------------------------- |
+| `packages.default`  | Main build artifact                             |
 | `devShells.default` | Development environment (inherits from package) |
-| `checks` | Formatting, tests, and optional lint checks |
-| `formatter` | Code formatter (nixfmt-rfc-style) |
+| `checks`            | Formatting, tests, and optional lint checks     |
+| `formatter`         | Code formatter (nixfmt)                         |

@@ -6,27 +6,87 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+
+        validateTemplates = pkgs.writeShellScriptBin "validate-templates" ''
+          exec ${./nix/validate-templates.sh}
+        '';
+
+        agentCheck = pkgs.writeShellScriptBin "agent-check" ''
+          set -euo pipefail
+          echo "=== Agent Pre-Submission Check ==="
+
+          echo "1. Checking working tree..."
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "ERROR: Working tree is dirty. Commit all changes first."
+            exit 1
+          fi
+
+          echo "2. Checking formatting..."
+          treefmt --fail-on-change
+
+          echo "3. Validating all templates..."
+          ${./nix/validate-templates.sh}
+
+          echo "=== All checks passed ==="
+        '';
+
       in
       {
-        formatter = pkgs.nixfmt-rfc-style;
+        packages.validate-templates = validateTemplates;
+        packages.agent-check = agentCheck;
 
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
-            nixfmt-rfc-style
+            nixfmt
+            treefmt
+            prettier
             just
             mdbook
+            go
+            nodejs_22
+            uv
+            validateTemplates
+            agentCheck
           ];
           shellHook = ''
             echo "Golden Template Dev Shell"
             echo "Available: nix flake show, nix flake init -t .#<template>"
+            echo "Commands: validate-templates, agent-check"
           '';
         };
+
+        checks.formatting =
+          pkgs.runCommand "check-formatting"
+            {
+              nativeBuildInputs = with pkgs; [
+                treefmt
+                nixfmt
+                prettier
+              ];
+              src = ./.;
+            }
+            ''
+              cp -r $src/. .
+              chmod -R +w .
+              export XDG_CACHE_HOME=$TMPDIR
+              treefmt --fail-on-change
+              touch $out
+            '';
+
+        formatter = pkgs.nixfmt;
       }
-    ) // {
+    )
+    // {
       templates = {
         python = {
           path = ./templates/python-uv2nix;
