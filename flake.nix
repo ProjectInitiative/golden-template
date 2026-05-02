@@ -50,9 +50,13 @@
             nixfmt
             treefmt
             prettier
+            ruff
+            rustfmt
+            go
+            clang-tools
+            shfmt
             just
             mdbook
-            go
             nodejs_22
             uv
             validateTemplates
@@ -72,6 +76,11 @@
                 treefmt
                 nixfmt
                 prettier
+                ruff
+                rustfmt
+                go
+                clang-tools
+                shfmt
               ];
               src = ./.;
             }

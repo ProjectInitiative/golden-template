@@ -2,7 +2,32 @@
 command = "nixfmt"
 includes = ["*.nix"]
 
+[formatter.ruff]
+command = "ruff"
+options = ["format"]
+includes = ["*.py"]
+
+[formatter.rustfmt]
+command = "rustfmt"
+options = ["--edition", "2021"]
+includes = ["*.rs"]
+
+[formatter.gofmt]
+command = "gofmt"
+options = ["-w"]
+includes = ["*.go"]
+
+[formatter.clang-format]
+command = "clang-format"
+options = ["-i"]
+includes = ["*.c", "*.cpp", "*.h", "*.ino"]
+
+[formatter.shfmt]
+command = "shfmt"
+options = ["-i", "2", "-w"]
+includes = ["*.sh"]
+
 [formatter.prettier]
 command = "prettier"
 options = ["--write"]
-includes = ["*.json", "*.md", "*.yml", "*.yaml"]
+includes = ["*.ts", "*.tsx", "*.js", "*.jsx", "*.json", "*.md", "*.yml", "*.yaml"]
