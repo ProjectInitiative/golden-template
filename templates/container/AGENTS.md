@@ -1,26 +1,59 @@
 # Agent Working Guide — Container Images
 
-## Environment
+## Available Images
 
-Nix-built OCI container images using `dockerTools`. Multi-arch push via `ops-utils`.
+| Pattern          | Build command                  | Use case                                            |
+| ---------------- | ------------------------------ | --------------------------------------------------- |
+| simple-image     | `nix build .#default`          | Minimal image, few deps                             |
+| multiuser-image  | `nix build .#multiuser-image`  | Custom users, entrypoint, env, ports                |
+| layered-image    | `nix build .#layered-image`    | Large images, no layer limit (`streamLayeredImage`) |
+| configured-image | `nix build .#configured-image` | Build-time setup via `fakeRootCommands`             |
 
-## Available Commands
+## Key Patterns
 
-| Command                                                             | Description                           |
-| ------------------------------------------------------------------- | ------------------------------------- |
-| `nix run .#build-all`                                               | Build all images and load into Docker |
-| `nix run .#push-multi-arch -- <package> <image-name> <owner> [tag]` | Build + push multi-arch               |
-| `nix run .#build-image -- <flake-ref>`                              | Build and load single image           |
-| `nix build .#default`                                               | Sandboxed build of container image    |
+### copyToRoot + buildEnv
 
-## Mandatory Pre-Submission
-
-```bash
-nix develop --command agent-check
+```nix
+copyToRoot = pkgs.buildEnv {
+  paths = [ my-app pkgs.bash ];
+  postBuild = ''
+    mkdir -p $out/data
+    cp ${someConfig} $out/config.yaml
+  '';
+};
 ```
 
-## Adding a New Container
+### Custom /etc/passwd and /etc/group
 
-1. Define the app derivation in `flake.nix`
-2. Create a `dockerTools.buildImage` for it
-3. Add to `packages` and register in CI push steps
+```nix
+etcFiles = pkgs.runCommand "etc-files" {} ''
+  mkdir -p $out/etc
+  echo "appuser:x:1000:1000:App User:/home/appuser:/bin/sh" >> $out/etc/passwd
+  echo "appuser:x:1000:" >> $out/etc/group
+'';
+```
+
+Then add `etcFiles` to `copyToRoot.paths`.
+
+### Entrypoint wrapping
+
+```nix
+entrypoint = pkgs.writeShellScript "entrypoint.sh" ''
+  set -e
+  exec "$@"
+'';
+```
+
+### Environment with PATH
+
+```nix
+config.Env = [
+  "PATH=${pkgs.lib.makeBinPath [ my-app pkgs.coreutils ]}"
+];
+```
+
+### Multi-arch Push
+
+```bash
+nix run .#push-multi-arch -- multiuser-image my-image-name ghcr.io/owner
+```
