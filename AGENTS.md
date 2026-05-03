@@ -2,6 +2,26 @@
 
 This document defines the standard operating model for AI agents working across ProjectInitiative repositories. It is a meta-guide: agents should read this first, then consult the per-project `AGENTS.md` and `flake.nix` for project-specific instructions.
 
+## Agent Workflow: Using This Repo
+
+When creating a new project or converting an existing one to Nix:
+
+1. **Identify the project type** from the table below (Python, Rust, Go, Node, Embedded, Container, Dev Shell, Nix Library, NixOS Config, or Wrapper Project).
+2. **Scaffold via `nix flake init -t`** — this is the canonical entry point:
+   ```bash
+   nix flake init -t github:projectinitiative/golden-template#python
+   ```
+   This generates all the standard files (`flake.nix`, `.envrc`, `AGENTS.md`, `treefmt.toml`, CI pipeline) plus stub source code.
+3. **Customize** the generated files: update `pname`, `version`, `dependencies`, and project-specific logic. The template's `AGENTS.md` gives you per-type commands and workflows.
+4. **Iterate** using `nix develop --command <tool>` for fast feedback (e.g., `cargo build`, `uv run pytest`, `go test`).
+5. **Validate** with `nix flake check && nix build` before submitting.
+6. **Consult extensions** when the template doesn't cover your exact case:
+   - `docs/project-type-reference.md` for the full pattern reference
+   - `docs/ci-strategies.md` for CI setup options
+   - Per-template files in `templates/<type>/` for the complete source
+
+This repo is designed as both a scaffolding tool AND a living reference — agents should use the template generator as the starting point, then consult the documentation for deeper patterns.
+
 ## Core Principles
 
 1. **Nix-first** — Every project must have a `flake.nix` that provides a reproducible build and development environment.
