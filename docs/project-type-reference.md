@@ -204,6 +204,7 @@ inputs = {
 **NixOS modules:** Optionally exposes `nixosModules.default` for system services (e.g., JMRI server from dcc-ex).
 
 **Use cases:**
+
 - Personal forks/tinkering that won't merge upstream
 - Projects with custom patches applied via Nix
 - Nix-based wrappers around upstream releases

@@ -12,13 +12,23 @@
     };
   };
 
-  outputs = { self, nixpkgs, flake-utils, upstream-src }:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+      upstream-src,
+    }:
     let
-      supportedSystems = [ "x86_64-linux" "aarch64-linux" ];
+      supportedSystems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
     in
     {
-      packages = forAllSystems (system:
+      packages = forAllSystems (
+        system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
         in
@@ -42,24 +52,32 @@
       );
 
       # NixOS module (optional — expose if this project provides a system service)
-      nixosModules.default = { config, lib, pkgs, ... }: {
-        options.services.my-project = {
-          enable = lib.mkEnableOption "my-project service";
-          package = lib.mkOption {
-            type = lib.types.package;
-            default = self.packages.${pkgs.system}.default;
+      nixosModules.default =
+        {
+          config,
+          lib,
+          pkgs,
+          ...
+        }:
+        {
+          options.services.my-project = {
+            enable = lib.mkEnableOption "my-project service";
+            package = lib.mkOption {
+              type = lib.types.package;
+              default = self.packages.${pkgs.system}.default;
+            };
+          };
+          config = lib.mkIf config.services.my-project.enable {
+            systemd.services.my-project = {
+              description = "My Project Service";
+              wantedBy = [ "multi-user.target" ];
+              serviceConfig.ExecStart = "${config.services.my-project.package}/bin/my-binary";
+            };
           };
         };
-        config = lib.mkIf config.services.my-project.enable {
-          systemd.services.my-project = {
-            description = "My Project Service";
-            wantedBy = [ "multi-user.target" ];
-            serviceConfig.ExecStart = "${config.services.my-project.package}/bin/my-binary";
-          };
-        };
-      };
 
-      devShells = forAllSystems (system:
+      devShells = forAllSystems (
+        system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
 
@@ -106,22 +124,27 @@
         }
       );
 
-      checks = forAllSystems (system:
-        let pkgs = nixpkgs.legacyPackages.${system}; in {
-          formatting = pkgs.runCommand "check-formatting" {
-            nativeBuildInputs = with pkgs; [ nixfmt ];
-            src = ./.;
-          } ''
-            cd $src
-            nixfmt --check *.nix
-            touch $out
-          '';
+      checks = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          formatting =
+            pkgs.runCommand "check-formatting"
+              {
+                nativeBuildInputs = with pkgs; [ nixfmt ];
+                src = ./.;
+              }
+              ''
+                cd $src
+                nixfmt --check *.nix
+                touch $out
+              '';
           build = self.packages.${system}.default;
         }
       );
 
-      formatter = forAllSystems (system:
-        nixpkgs.legacyPackages.${system}.nixfmt
-      );
+      formatter = forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt);
     };
 }
