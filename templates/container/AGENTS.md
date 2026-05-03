@@ -7,7 +7,7 @@
 | simple-image     | `nix build .#default`          | Minimal image, few deps                             |
 | multiuser-image  | `nix build .#multiuser-image`  | Custom users, entrypoint, env, ports                |
 | layered-image    | `nix build .#layered-image`    | Large images, no layer limit (`streamLayeredImage`) |
-| configured-image | `nix build .#configured-image` | Build-time setup via `fakeRootCommands`             |
+| configured-image | `nix build .#configured-image` | Build-time setup via `runAsRoot`                    |
 
 ## Key Patterns
 

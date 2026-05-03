@@ -134,8 +134,8 @@
           };
 
           # -------------------------------------------------------------------
-          # PATTERN 4: Image with fakeRootCommands (for setup during build)
-          # Use for: creating files, setting permissions, running build-time tasks
+          # PATTERN 4: Image with runAsRoot (setup commands during build)
+          # Use for: creating files, permissions, users at build time
           # -------------------------------------------------------------------
           configured-image = pkgs.dockerTools.buildImage {
             name = "my-app-configured";
@@ -145,10 +145,11 @@
               paths = [
                 my-app
                 pkgs.bash
+                pkgs.coreutils
                 etcFiles
               ];
             };
-            fakeRootCommands = ''
+            runAsRoot = ''
               mkdir -p /data /config
               chown -R 1000:1000 /data /config
               echo "app_mode=production" > /config/settings.env
