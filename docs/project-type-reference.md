@@ -37,6 +37,73 @@ Quick reference for each project type's flake pattern, inputs, and outputs.
 }
 ```
 
+### Python Edge Cases
+
+When uv2nix or pyproject.nix can't resolve a package (private repos, git dependencies, packages missing from nixpkgs), inject it via one of these patterns:
+
+#### Pattern A: Override into the uv2nix pythonSet (for wheels/git deps)
+
+```nix
+pythonSet = basePythonSet.overrideScope (pkgs.lib.composeManyExtensions [
+  overlay  # uv2nix overlay
+  (final: prev: {
+    my-private-pkg = final.buildPythonPackage {
+      name = "my-private-pkg";
+      src = pkgs.fetchFromGitHub {
+        owner = "my-org";
+        repo = "my-private-pkg";
+        rev = "v0.1.0";
+        hash = "sha256-...";
+      };
+      propagatedBuildInputs = with final; [ requests pydantic ];
+    };
+  })
+]);
+```
+
+#### Pattern B: Override base Python interpreter (for nixpkgs-level overrides)
+
+```nix
+python = pkgs.python3.override {
+  packageOverrides = self: super: {
+    flashinfer-python = pkgs.runCommand "dummy-flashinfer" { } "mkdir -p $out";
+    apache-tvm-ffi = pkgs.runCommand "dummy-tvm-ffi" { } "mkdir -p $out";
+  };
+};
+```
+
+Then use `python.withPackages` instead of the uv2nix pythonSet for the conflicting packages.
+
+#### Pattern C: Dummy/empty packages (to satisfy unresolvable transitive deps)
+
+```nix
+dummy-pkg = pkgs.runCommand "pkg-name" { } "mkdir -p $out";
+```
+
+#### Pattern D: Fetch from PyPI directly
+
+```nix
+src = pkgs.fetchPypi {
+  pname = "my-package";
+  version = "1.2.3";
+  hash = "sha256-...";
+  format = "setuptools";
+};
+```
+
+Combine with `buildPythonPackage` for packages not in nixpkgs.
+
+#### Pattern E: Hybrid — uv2nix dev shell, nixpkgs for build
+
+When a package has unresolvable git/private deps, use nixpkgs' `buildPythonApplication` for the build and uv2nix for `uv run` in the dev shell:
+
+```nix
+packages.default = pkgs.python3.pkgs.buildPythonApplication { ... };
+devShells.default = pkgs.mkShell {
+  packages = [ pkgs.uv ];  # uv run handles uv.lock deps
+};
+```
+
 ## 2. Rust (crane)
 
 **Inputs:** `nixpkgs`, `flake-utils`, `crane`
