@@ -12,6 +12,7 @@ When creating a new project or converting an existing one to Nix:
    nix flake init -t github:projectinitiative/golden-template#python
    ```
    This generates all the standard files (`flake.nix`, `.envrc`, `AGENTS.md`, `treefmt.toml`, CI pipeline) plus stub source code.
+   Available templates: `python`, `rust`, `go`, `node`, `embedded`, `compiled-serverless`, `container`, `dev-shell`, `nix-library`, `nixos-config`, `wrapper`.
 3. **Customize** the generated files: update `pname`, `version`, `dependencies`, and project-specific logic. The template's `AGENTS.md` gives you per-type commands and workflows.
 4. **Iterate** using `nix develop --command <tool>` for fast feedback (e.g., `cargo build`, `uv run pytest`, `go test`).
 5. **Validate** with `nix flake check && nix build` before submitting.
@@ -121,6 +122,7 @@ See `docs/project-type-reference.md` for detailed patterns. Quick summary:
 | Go              | (built-in)                   | `buildGoModule`                                 |
 | Node/JS         | (built-in)                   | `buildNpmPackage`                               |
 | Embedded        | `esp-dev`, `arduino-nix`     | `stdenv.mkDerivation` + toolchain               |
+| Compiled Serverless | `ops-utils`              | `buildGoModule` / `craneLib.buildPackage`       |
 | Container       | (built-in)                   | `dockerTools.buildImage` / `streamLayeredImage` |
 | Dev shell only  | (none needed)                | `mkShell`                                       |
 | Nix library     | (none needed)                | `lib` output set                                |

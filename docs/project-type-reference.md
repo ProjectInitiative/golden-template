@@ -249,6 +249,74 @@ outputs = { self, nixpkgs }: {
 };
 ```
 
+## 11. Compiled Serverless (Multi-Arch + Fission)
+
+**Inputs:** `nixpkgs`, `flake-utils`, `ops-utils`
+**Builder:** `buildGoModule` (can adapt to `craneLib.buildPackage` for Rust)
+**Key files:** `main.go`, `cmd/function/main.go`, `pkg/handler/`, `flake.nix`
+
+**Architecture:** Multi-headed binary pattern (inspired by [Fission's fission-bundle](https://github.com/fission/fission/blob/main/cmd/fission-bundle/main.go)) — a single compiled binary dispatches to different modes via subcommands.
+
+```nix
+let
+  supportedSystems = [ "x86_64-linux" "aarch64-linux" ];
+  forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
+in {
+  packages = forAllSystems (system: let
+    pkgs = nixpkgs.legacyPackages.${system};
+  in {
+    default = pkgs.buildGoModule {
+      pname = "my-service";
+      CGO_ENABLED = 0;
+      ldflags = [ "-s -w" "-X main.Version=${version}" ];
+    };
+    fission-function = pkgs.buildGoModule {
+      pname = "fission-function";
+      subPackages = [ "./cmd/function" ];
+    };
+    container-monolith = pkgs.dockerTools.buildImage { ... };
+    container-function = pkgs.dockerTools.buildImage { ... };
+    container-monolith-as-function = pkgs.dockerTools.buildImage { ... };
+  });
+}
+```
+
+### Key Patterns
+
+| Pattern | Description |
+| ------- | ----------- |
+| **Multi-headed binary** | One `main.go` dispatches via subcommands (`server`, `function`, etc.) |
+| **Shared business logic** | `pkg/handler/` is used by all deployment modes |
+| **Same binary as function** | Monolith binary with `function` subcommand deployed as Fission function |
+| **Multi-arch containers** | Per-arch OCI images + multi-arch manifest via `ops-utils` |
+| **Rust adaptation** | Replace `buildGoModule` with `craneLib.buildPackage`, same architecture pattern |
+
+### CI for Multi-Arch
+
+```yaml
+jobs:
+  check:
+    strategy:
+      matrix:
+        system: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.system }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v10
+      - run: nix flake check
+```
+
+### Fission Deployment
+
+```bash
+nix run .#push-multi-arch -- container-function my-fn ghcr.io/my-org
+fission environment create --name go-env --image ghcr.io/my-org/my-fn
+fission function create --name my-fn --env go-env
+fission route create --method GET --url / --function my-fn
+```
+
+---
+
 ## 10. Wrapper Project (External Source)
 
 **Inputs:** `nixpkgs`, `flake-utils`, `upstream-src` (flake = false)

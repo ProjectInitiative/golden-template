@@ -133,6 +133,10 @@
           path = ./templates/nixos-config;
           description = "NixOS system configuration flake";
         };
+        compiled-serverless = {
+          path = ./templates/compiled-serverless;
+          description = "Compiled Go service with multi-arch builds, multi-headed binary pattern, and Fission serverless deployment";
+        };
         wrapper = {
           path = ./templates/wrapper-project;
           description = "Nix wrapper around upstream source (no code in repo, .direnv/vendor/ workflow)";

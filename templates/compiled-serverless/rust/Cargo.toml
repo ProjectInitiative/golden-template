@@ -1,0 +1,15 @@
+[package]
+name = "my-service"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "my-service"
+path = "src/main.rs"
+
+[[bin]]
+name = "fission-function"
+path = "src/bin/function.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
