@@ -46,7 +46,10 @@
           # Go build helpers
           # -------------------------------------------------------------------
           mkGoModule =
-            { pname, subPackages ? [ "." ] }:
+            {
+              pname,
+              subPackages ? [ "." ],
+            }:
             pkgs.buildGoModule {
               inherit pname subPackages;
               inherit version;
@@ -297,7 +300,10 @@
           tests =
             pkgs.runCommand "run-tests"
               {
-                nativeBuildInputs = with pkgs; [ go toolchain ];
+                nativeBuildInputs = with pkgs; [
+                  go
+                  toolchain
+                ];
                 src = ./.;
               }
               ''

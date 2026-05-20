@@ -283,13 +283,13 @@ in {
 
 ### Key Patterns
 
-| Pattern | Description |
-| ------- | ----------- |
-| **Multi-headed binary** | One `main.go` dispatches via subcommands (`server`, `function`, etc.) |
-| **Shared business logic** | `pkg/handler/` is used by all deployment modes |
-| **Same binary as function** | Monolith binary with `function` subcommand deployed as Fission function |
-| **Multi-arch containers** | Per-arch OCI images + multi-arch manifest via `ops-utils` |
-| **Rust adaptation** | Replace `buildGoModule` with `craneLib.buildPackage`, same architecture pattern |
+| Pattern                     | Description                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------- |
+| **Multi-headed binary**     | One `main.go` dispatches via subcommands (`server`, `function`, etc.)           |
+| **Shared business logic**   | `pkg/handler/` is used by all deployment modes                                  |
+| **Same binary as function** | Monolith binary with `function` subcommand deployed as Fission function         |
+| **Multi-arch containers**   | Per-arch OCI images + multi-arch manifest via `ops-utils`                       |
+| **Rust adaptation**         | Replace `buildGoModule` with `craneLib.buildPackage`, same architecture pattern |
 
 ### CI for Multi-Arch
 
@@ -316,6 +316,65 @@ fission route create --method GET --url / --function my-fn
 ```
 
 ---
+
+## 12. Ingestion Pipeline (S3 + NATS + Fission + K8s)
+
+**Inputs:** `nixpkgs`, `flake-utils`, `uv2nix`, `pyproject-nix`, `pyproject-build-systems`
+**Builder:** `pythonSet.mkVirtualEnv`
+**Key files:** `pyproject.toml`, `uv.lock`, `flake.nix`, `k8s/nats.yaml`, `k8s/fission-functions.yaml`
+**Dependencies:** `boto3`, `flask`, `nats-py`
+
+### Architecture
+
+Browser uploads files directly to S3 via presigned URLs (zero proxy bottleneck). A confirm handler publishes to NATS JetStream. Fission's native `MessageQueueTrigger` invokes the orchestrator function, which creates ephemeral K8s batch Jobs for long-lived processing.
+
+```
+Browser ──POST /get-upload-url──► Upload handler ──► presigned S3 URL
+Browser ──PUT to S3────────────► S3 Storage (direct)
+Browser ──POST /confirm-upload──► Confirm handler ──► NATS JetStream
+                                      Fission MQ Trigger ──► Orchestrator ──► K8s Job
+```
+
+### Key Patterns
+
+| Pattern                  | Description                                                          |
+| ------------------------ | -------------------------------------------------------------------- |
+| **Presigned URL upload** | Files stream directly to S3, never through your server               |
+| **NATS JetStream**       | Durable queue with retries (`maxRetries: 3`) + DLQ                   |
+| **Fission MQ Trigger**   | NATS message invokes Fission function natively — no subscriber pod   |
+| **K8s Job processing**   | Long-running work (transcoding, OCR, etc.) runs as batch Jobs        |
+| **Multi-app subjects**   | Each app gets its own NATS subject namespace (`*.incoming`, `*.dlq`) |
+
+### Flake Structure
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+    uv2nix.url = "github:adisbladis/uv2nix";
+    pyproject-nix.url = "github:adisbladis/pyproject.nix";
+    pyproject-build-systems.url = "github:pyproject-nix/build-system-pkgs";
+  };
+  # ...pythonSet with buildSystemsOverlay + uv2nix overlay
+  # ...packages.default = pythonSet.mkVirtualEnv
+  # ...devShell with uv, python3, pytest, ruff, rclone, natscli
+}
+```
+
+### Deploying
+
+```bash
+# Deploy NATS
+kubectl apply -f k8s/nats.yaml
+
+# Create NATS stream + consumer
+nats stream add ingestion --subjects "ingestion.*" --storage file
+nats consumer add ingestion orchestrator --pull
+
+# Deploy Fission functions
+fission spec apply
+```
 
 ## 10. Wrapper Project (External Source)
 

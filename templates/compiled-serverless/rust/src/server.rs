@@ -1,8 +1,8 @@
 use std::env;
 
 use my_service::handle;
-use tokio::net::TcpListener;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpListener;
 
 pub fn run() {
     let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());

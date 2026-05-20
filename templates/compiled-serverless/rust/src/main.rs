@@ -1,8 +1,8 @@
 use std::env;
 
 use my_service::handle;
-use tokio::net::TcpListener;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpListener;
 
 mod server;
 

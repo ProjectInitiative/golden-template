@@ -63,20 +63,20 @@ GHCR via `nix run .#push-multi-arch`.
 
 ## Language Comparison
 
-| Aspect | Go | Rust |
-| ------ | -- | ---- |
-| Build tool | `buildGoModule` | `craneLib.buildPackage` |
-| Multi-arch | `CGO_ENABLED=0` + cross-compile | Target triples via rustc |
-| HTTP server | `net/http` stdlib | `tokio` + `hyper` or `axum` |
-| Shared logic | `pkg/handler/handler.go` | `src/lib.rs` |
+| Aspect       | Go                                 | Rust                                  |
+| ------------ | ---------------------------------- | ------------------------------------- |
+| Build tool   | `buildGoModule`                    | `craneLib.buildPackage`               |
+| Multi-arch   | `CGO_ENABLED=0` + cross-compile    | Target triples via rustc              |
+| HTTP server  | `net/http` stdlib                  | `tokio` + `hyper` or `axum`           |
+| Shared logic | `pkg/handler/handler.go`           | `src/lib.rs`                          |
 | Entry points | `main.go` + `cmd/function/main.go` | `src/main.rs` + `src/bin/function.rs` |
 
 ## Comparison: Separate Binaries vs. Single Binary
 
-| Approach | Pros | Cons |
-| -------- | ---- | ---- |
+| Approach                       | Pros                                          | Cons                                        |
+| ------------------------------ | --------------------------------------------- | ------------------------------------------- |
 | **Single multi-headed binary** | One build, one artifact, one dependency graph | Binary includes all modes (slightly larger) |
-| **Separate binaries per mode** | Minimal binary per function | Duplicated deps, more CI time, drift risk |
+| **Separate binaries per mode** | Minimal binary per function                   | Duplicated deps, more CI time, drift risk   |
 
 This template defaults to the **multi-headed binary** approach because it
 minimizes the delta between monolith and serverless deployments.

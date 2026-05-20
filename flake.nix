@@ -141,6 +141,10 @@
           path = ./templates/wrapper-project;
           description = "Nix wrapper around upstream source (no code in repo, .direnv/vendor/ workflow)";
         };
+        ingestion-pipeline = {
+          path = ./templates/ingestion-pipeline;
+          description = "S3/NATS/K8s ingestion pipeline with Fission serverless functions for direct-upload media processing";
+        };
       };
     };
 }

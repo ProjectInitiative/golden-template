@@ -28,6 +28,9 @@ nix flake init -t github:projectinitiative/golden-template#container
 # Dev shell only (tools, no build)
 nix flake init -t github:projectinitiative/golden-template#dev-shell
 
+# Ingestion pipeline (S3/NATS/K8s)
+nix flake init -t github:projectinitiative/golden-template#ingestion-pipeline
+
 # Shared Nix library
 nix flake init -t github:projectinitiative/golden-template#nix-library
 

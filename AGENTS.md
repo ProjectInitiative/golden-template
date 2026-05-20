@@ -115,19 +115,20 @@ See `docs/ci-strategies.md` for a comparison of CI approaches:
 
 See `docs/project-type-reference.md` for detailed patterns. Quick summary:
 
-| Type            | Input                        | Builder                                         |
-| --------------- | ---------------------------- | ----------------------------------------------- |
-| Python (uv2nix) | `uv2nix`, `pyproject.nix`    | `pythonSet.mkVirtualEnv`                        |
-| Rust (crane)    | `crane`                      | `craneLib.buildPackage` (split deps/src)        |
-| Go              | (built-in)                   | `buildGoModule`                                 |
-| Node/JS         | (built-in)                   | `buildNpmPackage`                               |
-| Embedded        | `esp-dev`, `arduino-nix`     | `stdenv.mkDerivation` + toolchain               |
-| Compiled Serverless | `ops-utils`              | `buildGoModule` / `craneLib.buildPackage`       |
-| Container       | (built-in)                   | `dockerTools.buildImage` / `streamLayeredImage` |
-| Dev shell only  | (none needed)                | `mkShell`                                       |
-| Nix library     | (none needed)                | `lib` output set                                |
-| NixOS config    | (various)                    | `nixosSystem`                                   |
-| Wrapper project | `upstream-src` (flake=false) | `stdenv.mkDerivation` + `.direnv/vendor/`       |
+| Type                | Input                                                | Builder                                                         |
+| ------------------- | ---------------------------------------------------- | --------------------------------------------------------------- |
+| Python (uv2nix)     | `uv2nix`, `pyproject.nix`                            | `pythonSet.mkVirtualEnv`                                        |
+| Rust (crane)        | `crane`                                              | `craneLib.buildPackage` (split deps/src)                        |
+| Go                  | (built-in)                                           | `buildGoModule`                                                 |
+| Node/JS             | (built-in)                                           | `buildNpmPackage`                                               |
+| Embedded            | `esp-dev`, `arduino-nix`                             | `stdenv.mkDerivation` + toolchain                               |
+| Compiled Serverless | `ops-utils`                                          | `buildGoModule` / `craneLib.buildPackage`                       |
+| Ingestion Pipeline  | `uv2nix`, `pyproject.nix`, `pyproject-build-systems` | `pythonSet.mkVirtualEnv` + NATS JetStream + Fission MQ triggers |
+| Container           | (built-in)                                           | `dockerTools.buildImage` / `streamLayeredImage`                 |
+| Dev shell only      | (none needed)                                        | `mkShell`                                                       |
+| Nix library         | (none needed)                                        | `lib` output set                                                |
+| NixOS config        | (various)                                            | `nixosSystem`                                                   |
+| Wrapper project     | `upstream-src` (flake=false)                         | `stdenv.mkDerivation` + `.direnv/vendor/`                       |
 
 ## Template Scaffolding
 

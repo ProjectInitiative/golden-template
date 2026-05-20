@@ -1,0 +1,94 @@
+apiVersion: fission.io/v1
+kind: HTTPTrigger
+metadata:
+  name: upload-handler
+  namespace: fission-function
+spec:
+  functionref:
+    name: upload-handler
+  relativeurl: /get-upload-url
+  method: POST
+---
+apiVersion: fission.io/v1
+kind: HTTPTrigger
+metadata:
+  name: confirm-handler
+  namespace: fission-function
+spec:
+  functionref:
+    name: confirm-handler
+  relativeurl: /confirm-upload
+  method: POST
+---
+apiVersion: fission.io/v1
+kind: MessageQueueTrigger
+metadata:
+  name: ingest-trigger
+  namespace: fission-function
+spec:
+  functionref:
+    name: orchestrator
+  mqtkind: nats
+  topic: ingestion.incoming
+  errorTopic: ingestion.dlq
+  maxRetries: 3
+  msgTimeout: 300
+---
+apiVersion: fission.io/v1
+kind: Function
+metadata:
+  name: upload-handler
+  namespace: fission-function
+spec:
+  environment:
+    name: python
+    namespace: fission-function
+  package:
+    functionname: ingestion_pipeline.api.upload_handler.main
+    packageref:
+      name: ingestion-pipeline-pkg
+      namespace: fission-function
+  secrets:
+    - name: upload-secret
+      namespace: ingestion-system
+  concurrency: 5
+---
+apiVersion: fission.io/v1
+kind: Function
+metadata:
+  name: confirm-handler
+  namespace: fission-function
+spec:
+  environment:
+    name: python
+    namespace: fission-function
+  package:
+    functionname: ingestion_pipeline.api.confirm_handler.main
+    packageref:
+      name: ingestion-pipeline-pkg
+      namespace: fission-function
+  secrets:
+    - name: upload-secret
+      namespace: ingestion-system
+    - name: nats-creds
+      namespace: ingestion-system
+  concurrency: 10
+---
+apiVersion: fission.io/v1
+kind: Function
+metadata:
+  name: orchestrator
+  namespace: fission-function
+spec:
+  environment:
+    name: python
+    namespace: fission-function
+  package:
+    functionname: ingestion_pipeline.api.orchestrator.main
+    packageref:
+      name: ingestion-pipeline-pkg
+      namespace: fission-function
+  secrets:
+    - name: s3-creds
+      namespace: ingestion-system
+  concurrency: 3

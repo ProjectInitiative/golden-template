@@ -1,8 +1,8 @@
 use std::env;
 
 use my_service::handle;
-use tokio::net::TcpListener;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpListener;
 
 fn main() {
     let port = env::var("FISSION_FUNCTION_PORT").unwrap_or_else(|_| "8888".to_string());

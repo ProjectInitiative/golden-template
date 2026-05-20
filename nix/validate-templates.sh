@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-TEMPLATES=("python-uv2nix" "rust-crane" "go" "node-js" "embedded" "container" "dev-shell" "nix-library" "nixos-config" "wrapper-project")
+TEMPLATES=("python-uv2nix" "rust-crane" "go" "node-js" "embedded" "container" "dev-shell" "nix-library" "nixos-config" "wrapper-project" "ingestion-pipeline")
 EXCLUDED_FROM_BUILD=("nixos-config" "dev-shell" "nix-library") # no package build artifact
 STRUCTURE_ONLY=("wrapper-project")                             # placeholder upstream URL — verify files exist and formatting, skip lock/build
 PASS=0
