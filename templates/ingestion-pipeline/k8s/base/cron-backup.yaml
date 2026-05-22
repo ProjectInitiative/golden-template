@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nightly-backup-publisher
+  namespace: ingestion-system
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: publisher
+              image: nats:latest
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  echo '{"object_key":"backups/gh-$(date +%Y%m%d).tar.gz","source":"github-backup"}' \
+                    > /msg.json
+                  cat /msg.json | nats pub --server=nats.ingestion-system:4222 \
+                    "ingestion.incoming" --header "Nats-Msg-Id: nightly-backup-$(date +%Y%m%d)"
+          serviceAccountName: nats-publisher
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nats-publisher
+  namespace: ingestion-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: nats-publisher
+  namespace: ingestion-system
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]

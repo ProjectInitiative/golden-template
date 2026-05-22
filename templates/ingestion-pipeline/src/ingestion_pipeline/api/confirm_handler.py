@@ -1,4 +1,5 @@
 import os
+import hashlib
 import asyncio
 import json
 from flask import request, jsonify
@@ -13,9 +14,15 @@ SUBJECT = os.environ.get("NATS_SUBJECT", "ingestion.incoming")
 async def publish(subject: str, data: dict) -> None:
     import nats
 
+    msg_id = hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()[:32]
+
     nc = await nats.connect(NATS_URL)
     js = nc.jetstream()
-    await js.publish(subject, json.dumps(data).encode())
+    await js.publish(
+        subject,
+        json.dumps(data).encode(),
+        headers={"Nats-Msg-Id": msg_id},
+    )
     await nc.close()
 
 
@@ -34,6 +41,11 @@ def main():
 
     try:
         asyncio.run(publish(SUBJECT, req_data))
-        return jsonify({"status": "queued"}), 200
+        return jsonify(
+            {
+                "status": "queued",
+                "dedup_hash": hashlib.sha256(object_key.encode()).hexdigest()[:16],
+            }
+        ), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

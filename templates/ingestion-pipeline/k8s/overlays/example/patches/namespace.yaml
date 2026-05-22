@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: my-app-system
+---
+apiVersion: fission.io/v1
+kind: Function
+metadata:
+  name: upload-handler
+  namespace: fission-function
+spec:
+  secrets:
+    - name: upload-secret
+      namespace: my-app-system
+---
+apiVersion: fission.io/v1
+kind: Function
+metadata:
+  name: confirm-handler
+  namespace: fission-function
+spec:
+  secrets:
+    - name: upload-secret
+      namespace: my-app-system
+    - name: nats-creds
+      namespace: my-app-system
+  concurrency: 10
+---
+apiVersion: fission.io/v1
+kind: Function
+metadata:
+  name: orchestrator
+  namespace: fission-function
+spec:
+  secrets:
+    - name: s3-creds
+      namespace: my-app-system
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nightly-backup-publisher
+  namespace: my-app-system

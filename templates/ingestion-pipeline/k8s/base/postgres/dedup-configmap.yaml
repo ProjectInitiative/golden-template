@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dedup-schema
+  namespace: ingestion-system
+data:
+  dedup-schema.sql: |
+    CREATE SCHEMA IF NOT EXISTS ingestion;
+
+    CREATE TABLE IF NOT EXISTS ingestion.processed (
+        id           BIGSERIAL PRIMARY KEY,
+        object_key   TEXT NOT NULL UNIQUE,
+        job_name     TEXT NOT NULL,
+        status       TEXT NOT NULL DEFAULT 'queued',
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+        completed_at TIMESTAMPTZ
+    );
+
+    CREATE INDEX idx_processed_object_key ON ingestion.processed (object_key);
+    CREATE INDEX idx_processed_status ON ingestion.processed (status);

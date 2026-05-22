@@ -1,0 +1,27 @@
+apiVersion: fission.io/v1
+kind: Function
+metadata:
+  name: orchestrator
+  namespace: fission-function
+spec:
+  package:
+    packageref:
+      name: my-app-pkg
+      namespace: fission-function
+    functionname: my_app.api.orchestrator.main
+---
+apiVersion: fission.io/v1
+kind: HTTPTrigger
+metadata:
+  name: upload-handler
+  namespace: fission-function
+spec:
+  relativeurl: /my-app/get-upload-url
+---
+apiVersion: fission.io/v1
+kind: HTTPTrigger
+metadata:
+  name: confirm-handler
+  namespace: fission-function
+spec:
+  relativeurl: /my-app/confirm-upload

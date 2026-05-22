@@ -1,0 +1,17 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: ingestion-pubsub
+  namespace: ingestion-system
+spec:
+  type: pubsub.nats.jetstream
+  version: v1
+  metadata:
+    - name: natsURL
+      value: "nats://nats.ingestion-system.svc.cluster.local:4222"
+    - name: name
+      value: "ingestion"
+    - name: durable
+      value: "true"
+    - name: queueGroup
+      value: "ingestion-workers"

@@ -48,6 +48,11 @@ spec:
     packageref:
       name: ingestion-pipeline-pkg
       namespace: fission-function
+  podspec:
+    metadata:
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "upload-handler"
   secrets:
     - name: upload-secret
       namespace: ingestion-system
@@ -67,6 +72,11 @@ spec:
     packageref:
       name: ingestion-pipeline-pkg
       namespace: fission-function
+  podspec:
+    metadata:
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "confirm-handler"
   secrets:
     - name: upload-secret
       namespace: ingestion-system
@@ -88,6 +98,11 @@ spec:
     packageref:
       name: ingestion-pipeline-pkg
       namespace: fission-function
+  podspec:
+    metadata:
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "orchestrator"
   secrets:
     - name: s3-creds
       namespace: ingestion-system

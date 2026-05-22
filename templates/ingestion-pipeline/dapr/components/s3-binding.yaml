@@ -1,0 +1,55 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: s3-raw-ingest
+  namespace: ingestion-system
+spec:
+  type: bindings.aws.s3
+  version: v1
+  metadata:
+    - name: endpoint
+      value: "http://garage-daemon.storage.svc.cluster.local:3900"
+    - name: accessKey
+      secretKeyRef:
+        name: s3-creds
+        key: access-key
+    - name: secretKey
+      secretKeyRef:
+        name: s3-creds
+        key: secret-key
+    - name: bucket
+      value: "raw-ingest"
+    - name: region
+      value: "us-east-1"
+    - name: disableSSL
+      value: "true"
+    - name: s3ForcePathStyle
+      value: "true"
+---
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: s3-output
+  namespace: ingestion-system
+spec:
+  type: bindings.aws.s3
+  version: v1
+  metadata:
+    - name: endpoint
+      value: "http://garage-daemon.storage.svc.cluster.local:3900"
+    - name: accessKey
+      secretKeyRef:
+        name: s3-creds
+        key: access-key
+    - name: secretKey
+      secretKeyRef:
+        name: s3-creds
+        key: secret-key
+    - name: bucket
+      value: "processed-output"
+    - name: region
+      value: "us-east-1"
+    - name: disableSSL
+      value: "true"
+    - name: s3ForcePathStyle
+      value: "true"

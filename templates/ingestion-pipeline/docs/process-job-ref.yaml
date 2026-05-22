@@ -1,8 +1,8 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: processing-template
-  namespace: media-pipeline
+  name: process-template
+  namespace: ingestion-system
 spec:
   backoffLimit: 1
   template:
@@ -10,7 +10,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: worker
-          image: jlesage/handbrake-cli:latest
+          image: your-worker-image:latest
           env:
             - name: S3_ENDPOINT
               value: "http://garage-daemon.storage.svc.cluster.local:3900"
@@ -28,7 +28,19 @@ spec:
             - /bin/sh
             - -c
             - |
+              set -euo pipefail
+
+              # Idempotent: skip if output already exists
+              if [ -n "$OUTPUT_PATH" ] && [ -f "$OUTPUT_PATH" ]; then
+                echo "Output already exists at $OUTPUT_PATH — skipping."
+                exit 0
+              fi
+
               echo "Processing $TARGET_OBJECT ..."
+
+              # (processing logic here — MakeMKV, HandBrakeCLI, OCR, etc.)
+
+              echo "Done: $TARGET_OBJECT"
           volumeMounts:
             - name: scratch
               mountPath: /scratch

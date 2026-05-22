@@ -1,0 +1,8 @@
+apiVersion: fission.io/v1
+kind: MessageQueueTrigger
+metadata:
+  name: ingest-trigger
+  namespace: fission-function
+spec:
+  topic: my-app.incoming
+  errorTopic: my-app.dlq

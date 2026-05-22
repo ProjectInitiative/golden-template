@@ -20,12 +20,39 @@ frontend/              # Browser upload UI
   index.html
   app.js
   style.css
-k8s/                   # Kubernetes manifests
-  nats.yaml            # NATS JetStream StatefulSet + Service
-  transcode-job.yaml   # Ephemeral batch Job template
-  fission-functions.yaml
+dapr/                  # Dapr sidecar component configs (optional)
+  README.md
+  kustomization.yaml   # Deploy via: kubectl apply -k dapr/
+  components/
+    pubsub-nats.yaml   # PubSub component pointing to NATS
+    s3-binding.yaml    # S3 input/output bindings
+    cron-binding.yaml  # Cron schedule binding
+k8s/                   # Kubernetes manifests (Kustomize-based)
+  base/                # ArgoCD app points here (or k8s/overlays/<name>/)
+    kustomization.yaml
+    fission-functions.yaml  # Fission functions + Dapr annotations
+    cron-backup.yaml        # K8s CronJob that publishes to NATS
+    postgres/
+      dedup-configmap.yaml  # Optional Postgres dedup table as ConfigMap
+  overlays/
+    example/           # Example overlay — rename subjects, set image, etc.
+      kustomization.yaml
+      patches/
+        namespace.yaml
+        rename-subjects.yaml
+        set-worker-image.yaml
+docs/                  # Additional reference docs
+  process-job-ref.yaml # Reference template for the K8s Job (created at runtime)
 tests/                 # Python tests
 ```
+
+## Cluster Prerequisites (deployed by cluster admin)
+
+- **Kubernetes cluster** with ArgoCD
+- **Fission** serverless framework
+- **NATS JetStream** (StatefulSet with persistent storage)
+- **Dapr** control plane (optional, for Dapr components)
+- **S3-compatible object store** (Garage, MinIO, etc.)
 
 ## Key Architecture Points
 

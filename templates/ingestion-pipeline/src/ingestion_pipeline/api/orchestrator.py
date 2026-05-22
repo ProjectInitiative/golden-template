@@ -1,5 +1,5 @@
 import os
-import time
+import hashlib
 import json
 import requests as http_requests
 from flask import request, jsonify
@@ -7,7 +7,12 @@ from flask import request, jsonify
 FISSION_KUBERNETES_API = os.environ.get(
     "FISSION_KUBERNETES_API", "http://localhost:8001"
 )
-NAMESPACE = os.environ.get("JOB_NAMESPACE", "media-pipeline")
+NAMESPACE = os.environ.get("JOB_NAMESPACE", "ingestion-system")
+
+
+def _job_name(object_key: str) -> str:
+    suffix = hashlib.sha256(object_key.encode()).hexdigest()[:16]
+    return f"process-{suffix}"
 
 
 def main():
@@ -17,11 +22,13 @@ def main():
     if not object_key:
         return jsonify({"error": "object_key is required"}), 400
 
+    name = _job_name(object_key)
+
     manifest = {
         "apiVersion": "batch/v1",
         "kind": "Job",
         "metadata": {
-            "name": f"process-{int(time.time())}",
+            "name": name,
             "namespace": NAMESPACE,
         },
         "spec": {
@@ -81,8 +88,6 @@ def main():
             headers={"Content-Type": "application/json"},
             data=json.dumps(manifest),
         )
-        return jsonify(
-            {"status": resp.status_code, "job": manifest["metadata"]["name"]}
-        ), resp.status_code
+        return jsonify({"status": resp.status_code, "job": name}), resp.status_code
     except Exception as e:
         return jsonify({"error": str(e)}), 500
