@@ -3,50 +3,56 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
+    devenv.url = "github:cachix/devenv";
+    devenv.inputs.nixpkgs.follows = "nixpkgs";
+    nix2container.url = "github:nlewo/nix2container";
+    nix2container.inputs.nixpkgs.follows = "nixpkgs";
+    mk-shell-bin.url = "github:rrbutani/nix-mk-shell-bin";
+  };
+
+  nixConfig = {
+    extra-trusted-public-keys = "devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=";
+    extra-substituters = "https://devenv.cachix.org";
   };
 
   outputs =
-    {
-      self,
-      nixpkgs,
-      flake-utils,
-    }:
-    flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        pkgs = nixpkgs.legacyPackages.${system};
-      in
-      {
-        # No packages.default — this is a shell-only project
+    inputs@{ flake-parts, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [
+        inputs.devenv.flakeModule
+      ];
 
-        devShells.default = pkgs.mkShell {
-          packages = with pkgs; [
-            # Add your tools here
-            hello
-            jq
-            yq
-            ripgrep
-            fd
-          ];
-          shellHook = ''
-            echo "Dev shell only (no package build)"
-            echo "Available tools: hello, jq, yq, rg, fd"
-          '';
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
+
+      perSystem =
+        { pkgs, ... }:
+        {
+          # No packages.default — this is a shell-only project
+
+          devenv.shells.default = {
+            imports = [ ./devenv.nix ];
+            devenv.root = toString ./.;
+          };
+
+          checks.formatting =
+            pkgs.runCommand "check-formatting"
+              {
+                nativeBuildInputs = with pkgs; [ nixfmt ];
+                src = ./.;
+              }
+              ''
+                nixfmt --check $src/*.nix
+                touch $out
+              '';
+
+          formatter = pkgs.nixfmt;
         };
-
-        checks.formatting =
-          pkgs.runCommand "check-formatting"
-            {
-              nativeBuildInputs = with pkgs; [ nixfmt ];
-              src = ./.;
-            }
-            ''
-              nixfmt --check $src/*.nix
-              touch $out
-            '';
-
-        formatter = pkgs.nixfmt;
-      }
-    );
+    };
 }

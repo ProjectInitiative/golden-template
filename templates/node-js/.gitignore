@@ -1,6 +1,8 @@
 result
 result-*
 .direnv/
+.devenv/
+.devenv.flake.nix
 .env
 node_modules/
 dist/

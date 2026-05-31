@@ -1,0 +1,118 @@
+# Minimal DevSpace + Devenv Configuration
+#
+# Use this when you want a simple dev pod that:
+# - Uses the devenv environment defined in your project's devenv.nix
+# - Mounts shared storage for code (no file sync needed)
+# - Can target specific hardware nodes
+#
+# Prerequisites:
+# - devenv.nix in project root
+# - Shared PVC (JuiceFS/NFS) available in namespace
+# - Dockerfile that uses devenv-built artifacts
+#
+# Usage:
+#   devspace dev              # Start dev environment
+#   devspace dev -p gpu       # Start on GPU node
+#   devspace build            # Build image in-cluster
+
+version: v2beta1
+name: devenv-dev
+
+vars:
+  IMAGE:
+    question: "Image name (registry/repo)"
+    default: "registry.local/myapp"
+  TAG:
+    default: "dev"
+  PVC:
+    question: "Shared storage PVC"
+    default: "shared-workspace"
+
+images:
+  app:
+    image: "${IMAGE}"
+    tags: ["${TAG}"]
+    dockerfile: ./Dockerfile
+    buildKit:
+      inCluster: {}
+
+deployments:
+  dev:
+    helm:
+      values:
+        containers:
+          - image: "${IMAGE}:${TAG}"
+            command: ["sleep", "infinity"]
+            workingDir: /workspace/project
+            volumeMounts:
+              - containerPath: /workspace
+                name: storage
+        volumes:
+          - name: storage
+            persistentVolumeClaim:
+              claimName: "${PVC}"
+
+dev:
+  dev:
+    labelSelector:
+      app.kubernetes.io/name: dev
+    terminal:
+      command: ["/bin/bash"]
+      workDir: /workspace/project
+    ports:
+      - port: "8080:8080"
+
+profiles:
+  - name: gpu
+    patches:
+      - op: add
+        path: deployments.dev.helm.values.containers[0].resources
+        value:
+          limits:
+            nvidia.com/gpu: 1
+
+  - name: amd
+    patches:
+      - op: add
+        path: deployments.dev.helm.values.containers[0].volumeMounts
+        value:
+          - containerPath: /workspace
+            name: storage
+          - containerPath: /dev/kfd
+            name: kfd
+          - containerPath: /dev/dri
+            name: dri
+      - op: add
+        path: deployments.dev.helm.values.volumes
+        value:
+          - name: storage
+            persistentVolumeClaim:
+              claimName: "${PVC}"
+          - name: kfd
+            hostPath:
+              path: /dev/kfd
+          - name: dri
+            hostPath:
+              path: /dev/dri
+
+  - name: heavy
+    patches:
+      - op: replace
+        path: deployments.dev.helm.values.containers[0].resources
+        value:
+          requests:
+            cpu: "8"
+            memory: "16Gi"
+          limits:
+            cpu: "32"
+            memory: "64Gi"
+
+commands:
+  test:
+    command: devspace enter -- bash -c "cd /workspace/project && devenv test"
+
+  build-nix:
+    command: devspace enter -- bash -c "cd /workspace/project && nix build"
+
+  shell:
+    command: devspace enter -- bash -c "cd /workspace/project && devenv shell"

@@ -1,4 +1,6 @@
 result*
+.devenv/
+.devenv.flake.nix
 .direnv/
 .venv/
 __pycache__/

@@ -2,17 +2,18 @@
 
 ## Environment
 
-Standard Go module built with `buildGoModule` in Nix.
+This project uses **devenv** for the development environment. The dev shell is loaded automatically via `direnv`. The project is built with `buildGoModule` for sandboxed Nix builds.
 
 ## Available Commands
 
-| Command                               | Description          |
-| ------------------------------------- | -------------------- |
-| `nix develop --command go build`      | Build                |
-| `nix develop --command go test ./...` | Run tests            |
-| `nix develop --command go fmt ./...`  | Format code          |
-| `nix develop --command go vet ./...`  | Vet code             |
-| `nix build`                           | Full sandboxed build |
+| Command                         | Description          |
+| ------------------------------- | -------------------- |
+| `devenv shell -- go build`      | Build                |
+| `devenv shell -- go test ./...` | Run tests            |
+| `devenv shell -- go fmt ./...`  | Format code          |
+| `devenv shell -- go vet ./...`  | Vet code             |
+| `devenv test`                   | Run test suite       |
+| `nix build`                     | Full sandboxed build |
 
 ## Mandatory Pre-Submission
 
@@ -22,6 +23,6 @@ nix develop --command agent-check
 
 ## Adding a Dependency
 
-1. `nix develop --command go get <module>`
-2. Update vendor: `nix develop --command go mod tidy && nix develop --command go mod vendor`
+1. `devenv shell -- go get <module>`
+2. Update vendor: `devenv shell -- go mod tidy && devenv shell -- go mod vendor`
 3. Update `vendorHash` in `flake.nix` by setting to `""`, building, and copying the hash

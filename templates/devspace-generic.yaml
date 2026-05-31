@@ -1,0 +1,405 @@
+# DevSpace + Devenv Integration Configuration
+#
+# This devspace.yaml is designed to work with projects that use devenv
+# for their development environment. It provides:
+#
+# 1. Interactive dev pods that mount shared storage (JuiceFS/NFS)
+# 2. In-cluster builds using BuildKit (no local Docker required)
+# 3. Hardware-targeted profiles (GPU nodes, CPU nodes, etc.)
+# 4. Ephemeral build jobs for heavy compilation
+#
+# Prerequisites:
+# - devenv.nix in project root (defines the dev environment)
+# - Shared storage (JuiceFS/NFS) mounted at /workspace on cluster nodes
+# - kubectl configured with cluster access
+#
+# Usage:
+#   devspace dev              # Start interactive dev pod
+#   devspace dev -p gpu       # Start dev pod on GPU node
+#   devspace build            # Build container image in-cluster
+#   devspace run test         # Run tests in cluster
+#   devspace run heavy-build  # Trigger ephemeral build job
+
+version: v2beta1
+name: devenv-workspace
+
+# =============================================================================
+# VARIABLES
+# =============================================================================
+vars:
+  # Container registry for built images
+  REGISTRY:
+    question: "Container registry URL"
+    default: "internal-registry.kube.local:5000"
+
+  # Image name
+  IMAGE_NAME:
+    question: "Image name"
+    default: "${DEVSPACE_NAMESPACE}/app"
+
+  # Image tag
+  IMAGE_TAG:
+    question: "Image tag"
+    default: "dev"
+
+  # Shared storage PVC name (must exist in namespace)
+  SHARED_PVC:
+    question: "Shared storage PVC name"
+    default: "juicefs-workspace-pvc"
+
+  # Project subdirectory on shared storage
+  PROJECT_PATH:
+    question: "Project path on shared storage"
+    default: "/workspace/${DEVSPACE_NAMESPACE}/${DEVSPACE_PROFILE}"
+
+# =============================================================================
+# IMAGES - Container image definitions
+# =============================================================================
+images:
+  app:
+    image: "${REGISTRY}/${IMAGE_NAME}"
+    tags:
+      - "${IMAGE_TAG}"
+      - "latest"
+    dockerfile: ./Dockerfile
+    context: ./
+
+    # In-cluster build using BuildKit (no local Docker required)
+    buildKit:
+      inCluster:
+        # Namespace where BuildKit runs
+        namespace: buildkit
+        # Node selector for build pod (optional - target specific hardware)
+        nodeSelector: {}
+        # Build args passed to Dockerfile
+        args: {}
+
+# =============================================================================
+# DEPLOYMENTS - Kubernetes resources
+# =============================================================================
+deployments:
+  # Main dev deployment (created by devspace dev)
+  app-dev:
+    namespace: "${DEVSPACE_NAMESPACE}"
+    helm:
+      # Inline chart for simple dev deployment
+      values:
+        containers:
+          - name: app
+            image: "${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+            # Keep container running for interactive shell
+            command: ["sleep", "infinity"]
+
+            # Mount shared storage
+            volumeMounts:
+              - name: workspace
+                mountPath: /workspace
+              - name: project
+                mountPath: /app
+
+            # Resource requests (adjust based on your cluster)
+            resources:
+              requests:
+                cpu: "500m"
+                memory: "1Gi"
+              limits:
+                cpu: "2"
+                memory: "4Gi"
+
+            # Environment variables
+            env:
+              - name: WORKSPACE_PATH
+                value: "/workspace"
+              - name: PROJECT_PATH
+                value: "${PROJECT_PATH}"
+
+        volumes:
+          - name: workspace
+            persistentVolumeClaim:
+              claimName: "${SHARED_PVC}"
+          - name: project
+            persistentVolumeClaim:
+              claimName: "${SHARED_PVC}"
+              subPath: "${PROJECT_PATH}"
+
+        # Default: no node selector (any node)
+        nodeSelector: {}
+
+# =============================================================================
+# DEV - Interactive development configuration
+# =============================================================================
+dev:
+  app:
+    # Selector to find the dev container
+    labelSelector:
+      app.kubernetes.io/name: app-dev
+
+    # Terminal configuration
+    terminal:
+      command: ["/bin/bash"]
+      workDir: /app
+
+    # Port forwarding
+    ports:
+      - port: "8080:8080" # App server
+      - port: "9090:9090" # Metrics/debug
+      - port: "5678:5678" # Debugger
+
+    # File sync (disabled - using shared storage instead)
+    # If you need local sync instead of shared storage, uncomment:
+    # sync:
+    #   - localSubPath: ./
+    #     containerPath: /app
+    #     excludePaths:
+    #       - .git/
+    #       - .direnv/
+    #       - node_modules/
+    #       - target/
+    #       - __pycache__/
+
+    # Auto-open terminal on devspace dev
+    open:
+      - url: "http://localhost:8080"
+
+# =============================================================================
+# PROFILES - Hardware and environment targeting
+# =============================================================================
+profiles:
+  # GPU profile (NVIDIA)
+  - name: gpu
+    patches:
+      - op: add
+        path: deployments.app-dev.helm.values.nodeSelector
+        value:
+          nvidia.com/gpu.present: "true"
+      - op: add
+        path: deployments.app-dev.helm.values.containers[0].resources.limits
+        value:
+          nvidia.com/gpu: 1
+      - op: add
+        path: deployments.app-dev.helm.values.containers[0].env
+        value:
+          - name: NVIDIA_VISIBLE_DEVICES
+            value: "all"
+          - name: CUDA_VISIBLE_DEVICES
+            value: "0"
+
+    # Use GPU-optimized image
+    replacements:
+      - path: images.app.image
+        pattern: "app"
+        replacement: "app-gpu"
+
+  # AMD GPU profile (ROCm)
+  - name: amd-gpu
+    patches:
+      - op: add
+        path: deployments.app-dev.helm.values.nodeSelector
+        value:
+          amd.com/gpu.present: "true"
+      - op: add
+        path: deployments.app-dev.helm.values.containers[0].volumeMounts
+        value:
+          - name: kfd
+            mountPath: /dev/kfd
+          - name: dri
+            mountPath: /dev/dri
+      - op: add
+        path: deployments.app-dev.helm.values.volumes
+        value:
+          - name: kfd
+            hostPath:
+              path: /dev/kfd
+          - name: dri
+            hostPath:
+              path: /dev/dri
+
+  # High-CPU profile (for compilation)
+  - name: compile
+    patches:
+      - op: replace
+        path: deployments.app-dev.helm.values.containers[0].resources
+        value:
+          requests:
+            cpu: "4"
+            memory: "8Gi"
+          limits:
+            cpu: "16"
+            memory: "32Gi"
+
+  # Specific node targeting
+  - name: node-strix
+    patches:
+      - op: add
+        path: deployments.app-dev.helm.values.nodeSelector
+        value:
+          kubernetes.io/hostname: "strix-halo"
+
+  - name: node-xeon
+    patches:
+      - op: add
+        path: deployments.app-dev.helm.values.nodeSelector
+        value:
+          kubernetes.io/hostname: "xeon-builder"
+
+# =============================================================================
+# COMMANDS - Custom devspace run commands
+# =============================================================================
+commands:
+  # Run tests in cluster
+  test:
+    command: |
+      echo "Running tests in cluster..."
+      devspace enter -- bash -c "
+        cd /app && \
+        devenv test
+      "
+
+  # Run devenv shell in cluster
+  shell:
+    command: |
+      echo "Entering devenv shell in cluster..."
+      devspace enter -- bash -c "cd /app && devenv shell"
+
+  # Trigger heavy build job (ephemeral pod)
+  heavy-build:
+    command: |
+      echo "Triggering heavy build job..."
+      kubectl apply -f - <<EOF
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: heavy-build-$(date +%s)
+        namespace: ${DEVSPACE_NAMESPACE}
+      spec:
+        template:
+          spec:
+            restartPolicy: Never
+            nodeSelector:
+              kubernetes.io/hostname: "strix-halo"
+            containers:
+              - name: builder
+                image: nixos/nix:latest
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    cd /app
+                    nix build
+                    echo "Build complete. Results in /app/result"
+                volumeMounts:
+                  - name: workspace
+                    mountPath: /workspace
+                  - name: project
+                    mountPath: /app
+                resources:
+                  requests:
+                    cpu: "8"
+                    memory: "16Gi"
+                  limits:
+                    cpu: "32"
+                    memory: "64Gi"
+            volumes:
+              - name: workspace
+                persistentVolumeClaim:
+                  claimName: ${SHARED_PVC}
+              - name: project
+                persistentVolumeClaim:
+                  claimName: ${SHARED_PVC}
+                  subPath: ${PROJECT_PATH}
+      EOF
+      echo "Job submitted. Monitor with: kubectl get jobs -n ${DEVSPACE_NAMESPACE}"
+
+  # Build container image in-cluster
+  build-image:
+    command: |
+      echo "Building container image in-cluster..."
+      devspace build
+
+  # Run nix build in cluster
+  nix-build:
+    command: |
+      echo "Running nix build in cluster..."
+      devspace enter -- bash -c "cd /app && nix build"
+
+  # Clean up dev resources
+  cleanup:
+    command: |
+      echo "Cleaning up dev resources..."
+      devspace purge
+      kubectl delete jobs -n ${DEVSPACE_NAMESPACE} -l app=heavy-build
+
+  # Show logs from dev pod
+  logs:
+    command: |
+      devspace logs app-dev --tail=100 -f
+
+  # Restart dev pod
+  restart:
+    command: |
+      devspace purge
+      devspace dev
+
+# =============================================================================
+# HOOKS - Lifecycle hooks
+# =============================================================================
+hooks:
+  # Before devspace dev - ensure shared storage is mounted
+  - command: |
+      echo "Checking shared storage PVC..."
+      kubectl get pvc ${SHARED_PVC} -n ${DEVSPACE_NAMESPACE} || {
+        echo "ERROR: PVC ${SHARED_PVC} not found in namespace ${DEVSPACE_NAMESPACE}"
+        echo "Create it first or update SHARED_PVC variable"
+        exit 1
+      }
+    events: ["before:dev"]
+
+  # After devspace dev - show connection info
+  - command: |
+      echo ""
+      echo "=== Dev Pod Ready ==="
+      echo "Shared storage: ${SHARED_PVC} mounted at /workspace"
+      echo "Project path: ${PROJECT_PATH}"
+      echo ""
+      echo "Commands:"
+      echo "  devspace run test         - Run tests"
+      echo "  devspace run shell        - Enter devenv shell"
+      echo "  devspace run heavy-build  - Trigger heavy build job"
+      echo "  devspace run build-image  - Build container image"
+      echo ""
+    events: ["after:dev"]
+
+# =============================================================================
+# PIPELINES - Custom build pipelines
+# =============================================================================
+pipelines:
+  # Override default build pipeline
+  build:
+    run: |-
+      echo "=== In-Cluster Build Pipeline ==="
+
+      # Build container image using BuildKit in cluster
+      build_images --all
+
+      echo "=== Build Complete ==="
+      echo "Image: ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+
+  # Deploy pipeline
+  deploy:
+    run: |-
+      echo "=== Deploy Pipeline ==="
+
+      # Build first
+      run_pipelines build
+
+      # Deploy to cluster
+      deploy --all
+
+      echo "=== Deploy Complete ==="
+
+  # Purge pipeline
+  purge:
+    run: |-
+      echo "=== Purge Pipeline ==="
+      purge --all
+      echo "=== Purge Complete ==="

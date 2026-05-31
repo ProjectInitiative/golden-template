@@ -3,30 +3,42 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
+    devenv.url = "github:cachix/devenv";
+    devenv.inputs.nixpkgs.follows = "nixpkgs";
+    nix2container.url = "github:nlewo/nix2container";
+    nix2container.inputs.nixpkgs.follows = "nixpkgs";
+    mk-shell-bin.url = "github:rrbutani/nix-mk-shell-bin";
     ops-utils.url = "github:projectinitiative/ops-utils";
   };
 
+  nixConfig = {
+    extra-trusted-public-keys = "devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=";
+    extra-substituters = "https://devenv.cachix.org";
+  };
+
   outputs =
-    {
-      self,
-      nixpkgs,
-      flake-utils,
-      ops-utils,
-    }:
-    let
-      supportedSystems = [
+    inputs@{ flake-parts, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [
+        inputs.devenv.flakeModule
+      ];
+
+      systems = [
         "x86_64-linux"
         "aarch64-linux"
       ];
-      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
-    in
-    {
-      packages = forAllSystems (
-        system:
+
+      perSystem =
+        {
+          config,
+          self',
+          pkgs,
+          ...
+        }:
         let
-          pkgs = nixpkgs.legacyPackages.${system};
-          ops = ops-utils.lib.mkUtils { inherit pkgs; };
+          ops = inputs.ops-utils.lib.mkUtils { inherit pkgs; };
 
           # -------------------------------------------------------------------
           # PATTERN 1: Simple image with buildEnv + copyToRoot
@@ -159,83 +171,52 @@
 
         in
         {
-          default = simple-image;
-          inherit (ops) build-image push-multi-arch push-insecure;
-          inherit
-            multiuser-image
-            layered-image
-            configured-image
-            ;
-        }
-      );
-
-      apps = forAllSystems (
-        system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-          ops = ops-utils.lib.mkUtils { inherit pkgs; };
-          opsApps = ops-utils.lib.mkApps { inherit pkgs; } ops;
-        in
-        opsApps
-        // {
-          build-all = {
-            type = "app";
-            program = toString (
-              pkgs.writeShellScript "build-all" ''
-                nix build .#default -o result-image
-                docker load < result-image
-                echo "Also available: nix build .#multiuser-image, .#layered-image, .#configured-image"
-              ''
-            );
+          packages = {
+            default = simple-image;
+            inherit (ops) build-image push-multi-arch push-insecure;
+            inherit
+              multiuser-image
+              layered-image
+              configured-image
+              ;
           };
-        }
-      );
 
-      devShells = forAllSystems (
-        system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-        in
-        {
-          default = pkgs.mkShell {
-            packages = with pkgs; [
-              docker
-              skopeo
-              nix-build-uncached
-            ];
-            shellHook = ''
-              echo "Container dev environment"
-              echo "Commands:"
-              echo "  nix build .#default           : Simple image"
-              echo "  nix build .#multiuser-image   : With users, entrypoint, env"
-              echo "  nix build .#layered-image     : streamLayeredImage (modern)"
-              echo "  nix build .#configured-image  : With fakeRootCommands"
-              echo "  nix run .#push-multi-arch ... : Multi-arch push"
-            '';
+          apps = {
+            build-all = {
+              type = "app";
+              program = toString (
+                pkgs.writeShellScript "build-all" ''
+                  nix build .#default -o result-image
+                  docker load < result-image
+                  echo "Also available: nix build .#multiuser-image, .#layered-image, .#configured-image"
+                ''
+              );
+            };
+          }
+          # Merge ops-utils apps
+          // builtins.mapAttrs (name: value: value) (inputs.ops-utils.lib.mkApps { inherit pkgs; } ops);
+
+          devenv.shells.default = {
+            imports = [ ./devenv.nix ];
+            devenv.root = toString ./.;
           };
-        }
-      );
 
-      checks = forAllSystems (
-        system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-        in
-        {
-          formatting =
-            pkgs.runCommand "check-formatting"
-              {
-                nativeBuildInputs = [ pkgs.nixfmt ];
-                src = ./.;
-              }
-              ''
-                nixfmt --check $src/*.nix
-                touch $out
-              '';
-          build = self.packages.${system}.default;
-        }
-      );
+          checks = {
+            formatting =
+              pkgs.runCommand "check-formatting"
+                {
+                  nativeBuildInputs = [ pkgs.nixfmt ];
+                  src = ./.;
+                }
+                ''
+                  nixfmt --check $src/*.nix
+                  touch $out
+                '';
 
-      formatter = forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt);
+            build = self'.packages.default;
+          };
+
+          formatter = pkgs.nixfmt;
+        };
     };
 }
