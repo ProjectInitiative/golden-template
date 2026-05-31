@@ -596,6 +596,34 @@ devspace enter -- df -h /workspace
 
 ---
 
+## OpenBao / Vault Secrets Integration
+
+devenv includes a built-in `services.vault` module that runs a local Vault-compatible secrets server. Swap in **OpenBao** (the open-source Vault fork) for a fully free secrets store:
+
+```nix
+# devenv.nix
+{ pkgs, ... }: {
+  services.vault = {
+    enable = true;
+    package = pkgs.openbao;  # or pkgs.vault-bin for HashiCorp Vault
+  };
+}
+```
+
+```bash
+# Start OpenBao
+devenv up
+
+# In another terminal, configure a dev secret
+export VAULT_ADDR=http://127.0.0.1:8200
+vault secrets enable -path=kv kv-v2
+vault kv put kv/dev/db password=localdev
+```
+
+**Use case in dev pods:** When combined with DevSpace, the OpenBao instance runs inside the dev pod alongside your app — no external secret store needed. Your app reads secrets from `http://localhost:8200` using the Vault API. The same pattern works in production with a real Vault/OpenBao cluster — just change the `VAULT_ADDR`.
+
+---
+
 ## Summary
 
 | Tool               | Responsibility                                       |
