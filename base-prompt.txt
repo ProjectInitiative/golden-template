@@ -1,82 +1,59 @@
-### Agentic Nix-Conversion Prompt (Extended)
+You are converting an existing Nix project to the golden-template architecture (devenv + flake-parts). Follow this guide:
 
-**Objective:** Convert the current repository into a reproducible Nix-based project following ProjectInitiative standards.
+## Phase 1: Flake restructure
 
-**Reference:** Consult `AGENTS.md`, `SOP.md`, and `docs/project-type-reference.md` in the golden-template repo for detailed guidance.
+1. Replace `flake-utils` with `flake-parts` + `devenv.flakeModule`
+2. Add `nix2container` input (required by devenv internally even if not using containers)
+3. Add `nixConfig` for devenv.cachix.org
+4. Support 4 systems: x86_64-linux, aarch64-linux, x86_64-darwin, aarch64-darwin
+5. Move dev shell from `mkShell` to `devenv.shells.default`
 
----
+## Phase 2: Create devenv.nix (Phase 3 pattern - everything in one file)
 
-**1. Dependency Analysis**
-* **Scan Phase:** Identify core build systems (`Cargo.toml`, `go.mod`, `package.json`, `CMakeLists.txt`, `pyproject.toml`).
-* **Categorization:** Distinguish between `nativeBuildInputs` (build-time tools) and `buildInputs` (run-time libraries).
-* **Project Type Detection:**
-  * If `pyproject.toml` + `uv.lock`: Use Python (uv2nix) pattern
-  * If `pyproject.toml` or `requirements.txt` (no uv.lock): Python (legacy) pattern
-  * If `Cargo.toml` + `Cargo.lock`: Use Rust (crane) pattern
-  * If `go.mod`: Use Go (buildGoModule) pattern
-  * If `package.json` + lockfile: Use Node/JS (buildNpmPackage) pattern
-  * If `CMakeLists.txt` with ESP-IDF references: Use Embedded (esp-dev) pattern
-  * If Dockerfile only: Use Container (dockerTools) pattern
+`devenv.nix` is the SINGLE source of truth. Use `outputs.<name>` for build artifacts:
 
-**2. Output Specifications**
+```nix
+{ pkgs, config, ... }: {
+  # Disable cache management if system handles it
+  cachix.enable = false;
 
-**General Project Structure (All Types):**
-* `flake.nix`: Main entry point with standard outputs
-  * `packages.${system}.default`: Main build artifact
-  * `devShells.${system}.default`: Development environment (inherit deps from package)
-  * `checks.${system}`: `formatting`, `tests`
-  * `formatter.${system}`: `nixfmt` or treefmt wrapper
-* `.envrc`: Contains `use flake`
-* `AGENTS.md`: Project-specific agent working guide
-* `treefmt.toml`: Formatter configuration (if using treefmt)
+  # Language tooling
+  languages.X.enable = true;
 
-**Multi-Architecture:** Parameterize for at minimum `x86_64-linux` and `aarch64-linux` using `flake-utils` or explicit `genAttrs`.
+  # Dev-only tools (not needed for build)
+  packages = with pkgs; [ tool1 tool2 ];
 
-**Specialized Python Logic (uv2nix):**
-* Use `pyproject.nix` for parsing and `uv2nix` for dependency management.
-* Load workspace via `uv2nix.lib.workspace.loadWorkspace`.
-* Construct `pythonSet` using `pyproject-build-systems.overlays.default` and uv2nix lockfile overlay.
-* Use `pythonSet.mkVirtualEnv` for both the package and the dev environment.
-* Hybrid handling: Use `overrideScope` for C-extension system dependencies.
+  # Build environment vars (needed by sys crates)
+  env.PKG_CONFIG_PATH = "...";
+  env.LIBCLANG_PATH = "...";
 
-**Specialized Rust Logic (crane):**
-* Use `crane` (`github:ipetkov/crane`) for incremental cargo builds.
-* Split build: `cargoArtifacts = craneLib.buildDepsOnly { ... }` then `craneLib.buildPackage { inherit cargoArtifacts; ... }`.
-* System libraries: For `sys` crates, inject `pkg-config` and required C libraries.
+  # The build itself
+  outputs.app = pkgs.XXX.buildXXXPackage {
+    pname = "my-app";
+    # ... build config
+  };
+}
+```
 
-**Specialized Embedded Logic (ESP-IDF):**
-* Use `esp-dev` (`github:mirrexagon/nixpkgs-esp-dev`) for ESP-IDF toolchain.
-* Use `arduino-nix` for Arduino library management if needed.
-* Vendor component fetches in `nix/dependencies.nix`.
-* Create wrapper scripts in `nix/scripts.nix` for build/flash/monitor workflows.
+`flake.nix` just extracts:
+```nix
+packages.default = config.devenv.shells.default.outputs.app;
+```
 
-**Specialized Container Logic:**
-* Use `pkgs.dockerTools.buildImage` or `streamLayeredImage` for OCI images.
-* Use `ops-utils` (`github:projectinitiative/ops-utils`) for multi-arch push scripts.
-* Configure CI for multi-arch build + push to GHCR.
+## Phase 3: Register inputs
 
-**3. Quality Guardrails**
-* **No Impurity:** Strictly forbid pip install (outside uv2nix), go get, or cargo network access during sandboxed build.
-* **Sandboxing:** Ensure derivation is sandbox-safe — all source fetches resolved upfront.
-* **Pathing:** Hardcode or wrap paths to avoid "file not found" errors in read-only Nix store.
-* **DRY Deviations:** If devShell requires tools not in the package derivation, document why.
-* **Standard Compliance:** Adhere to nixpkgs contributor guidelines for naming, meta, and license.
+After adding language/hook config, run:
+```bash
+devenv inputs add rust-overlay github:oxalica/rust-overlay --follows nixpkgs
+devenv inputs add git-hooks github:cachix/git-hooks.nix --follows nixpkgs
+```
 
-**4. Testing & Iteration Workflow**
-* **Local Iteration:** Prioritize fast feedback loops during development.
-  * Python: `nix develop --command uv run pytest`
-  * Rust: `nix develop --command cargo build`
-  * Go: `nix develop --command go build`
-  * Node: `nix develop --command npm run build`
-* **Sandbox Verification:** Final validation using `nix build` to confirm hermetic, sandbox-safe build.
-* **Pre-Submission:** Run `nix flake check` (verifies formatting, tests) and `nix build` (verifies hermetic build).
+## Common pitfalls to check
 
-**5. Documentation Requirements**
-* Create `AGENTS.md` with:
-  * How to enter the dev environment
-  * Available commands (build, test, format, lint, check)
-  * Mandatory pre-submission steps
-* Update or create `DESIGN.md` with:
-  * Architecture decisions
-  * Build and runtime dependencies
-  * Why specific Nix patterns were chosen
+- [ ] `inputsFrom` doesn't propagate env vars - set them explicitly in `env.`
+- [ ] Set `PKG_CONFIG_PATH` and `LIBCLANG_PATH` in BOTH build and `devenv.nix env`
+- [ ] Add `nix2container` input to `flake.nix` (devenv requires it internally)
+- [ ] `cachix.enable = false` if user has system nix cache config
+- [ ] User needs `devenv` 2.x and `use_devenv` direnv function for clean runtime
+- [ ] Gitignore `.pre-commit-config.yaml` (auto-generated by devenv)
+- [ ] Handle both `sha256:<base32>` AND `sha256-<base64>` hash formats if parsing narHash

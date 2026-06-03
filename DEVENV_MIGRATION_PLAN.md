@@ -561,6 +561,51 @@ For projects that export NixOS modules (like your `loft` tool):
 
 ---
 
+### 3.3 Phase 3 Pattern (Final): Everything in `devenv.nix`
+
+> **Note:** Phase 3 eliminates the split between `flake.nix` (build) and `devenv.nix` (dev) by moving build definitions into `devenv.nix` via `outputs.<name>`.
+
+This is the pattern we settled on after the loft migration. It provides single-source-of-truth for all dependencies:
+
+```nix
+# devenv.nix - single source for everything
+{ pkgs, config, ... }: {
+  languages.rust.enable = true;     # Language tooling (also used by build)
+
+  packages = with pkgs; [ ... ];    # Dev-only tools
+
+  outputs.app = pkgs.rustPlatform.buildRustPackage {   # The build itself
+    pname = "my-app";
+    version = "0.1.0";
+    src = ./.;
+    buildInputs = with pkgs; [ ... ];
+    nativeBuildInputs = with pkgs; [ ... ];
+  };
+
+  env.PKG_CONFIG_PATH = "${pkgs.nix.dev}/lib/pkgconfig";  # Build env vars
+  env.LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+}
+```
+
+```nix
+# flake.nix - just wiring
+perSystem = { config, ... }: {
+  packages.default = config.devenv.shells.default.outputs.app;  # Extract
+  devenv.shells.default = { imports = [ ./devenv.nix ]; };
+};
+```
+
+**Benefits:**
+- One file for build, dev, languages, env vars, git hooks
+- No `inputsFrom` needed (env vars and packages are explicit)
+- Works cleanly with `use devenv` (devenv 2.x required)
+
+**Drawbacks:**
+- `buildRustPackage` means full rebuild on dep changes (vs crane's incremental)
+- Workspace/CLI tools need to be duplicated if also needed in build phase
+
+---
+
 ### Phase 4: Documentation Updates
 
 #### 4.1 Update AGENTS.md

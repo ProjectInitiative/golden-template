@@ -661,6 +661,95 @@ imports = [ inputs.devenv.flakeModule ];
 
 **Solution:** Use `devenv up` to start services, not `devenv shell`. Services are managed by the process manager.
 
+### Issue: `devenv.root` resolves to nix store path (Read-only file system errors)
+
+**Problem:** When using `use flake` via nix-direnv, `devenv.root = toString ./.` resolves to the nix store path during evaluation. The `devenv` CLI then tries to create `.devenv/` there and fails.
+
+**Solutions (in order of preference):**
+
+1. **Upgrade to devenv 2.x and use `use devenv`** — Install latest devenv and add the `use_devenv` function to `~/.config/direnv/lib/devenv.sh`:
+   ```bash
+   nix profile install github:cachix/devenv/latest
+   ```
+   ```bash
+   # ~/.config/direnv/lib/devenv.sh
+   use_devenv() {
+     watch_file .envrc devenv.nix devenv.lock devenv.yaml
+     eval "$(devenv direnv-export)"
+   }
+   ```
+   Then use `use devenv` in `.envrc`. The `direnv-export` command handles `DEVENV_ROOT` correctly at runtime.
+
+2. **Use `devenv shell -- ...`** instead of direnv integration — works with any version.
+
+### Issue: `cachix.enable` causes auth errors with private caches
+
+**Problem:** `devenv`'s built-in cachix integration tries to manage binary caches, which may conflict with system-level nix configuration (e.g., private S3 caches with authentication).
+
+**Solution:** Disable `devenv`'s cache management:
+```nix
+# devenv.nix
+{
+  cachix.enable = false;
+}
+```
+
+### Issue: `inputsFrom` doesn't propagate env vars or build deps reliably
+
+**Problem:** In `mkShell`, `inputsFrom` inherits `buildInputs`/`nativeBuildInputs` from a derivation. In `devenv`, this doesn't reliably add packages to PATH or propagate environment variables (`PKG_CONFIG_PATH`, `LIBCLANG_PATH`).
+
+**Solution:** Be explicit — list the packages and env vars you need in `devenv.nix`. Use the Phase 3 pattern (outputs in `devenv.nix`, extraction in `flake.nix`) to keep everything in one place.
+
+### Issue: `buildRustPackage` needs `PKG_CONFIG_PATH` and `LIBCLANG_PATH`
+
+**Problem:** Rust projects with `buildRustPackage` that use sys crates (nix-bindings-sys, openssl-sys) need these env vars set at both build time and dev time.
+
+**Solution:** Set them in both places:
+```nix
+# In buildRustPackage
+PKG_CONFIG_PATH = "${pkgs.nix.dev}/lib/pkgconfig";
+LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+
+# In devenv.nix shell env (for cargo build in dev shell)
+env.PKG_CONFIG_PATH = "${pkgs.nix.dev}/lib/pkgconfig";
+env.LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+```
+
+### Issue: `container-processes` package needs `nix2container` input
+
+**Problem:** `devenv` generates a `container-processes` package by default, which requires `nix2container` as a flake input, even if the project doesn't use containers.
+
+**Solution:** Add to `flake.nix`:
+```nix
+inputs.nix2container.url = "github:nlewo/nix2container";
+nix2container.inputs.nixpkgs.follows = "nixpkgs";
+```
+
+### Issue: `.pre-commit-config.yaml` is auto-generated
+
+**Problem:** `devenv` generates this file from `git-hooks.hooks` config in `devenv.nix`. Committing it causes confusion when it's regenerated.
+
+**Solution:** Add to `.gitignore`:
+```gitignore
+.pre-commit-config.yaml
+```
+
+### Issue: `devenv` CLI needs explicit input registration
+
+**Problem:** Using `languages.rust`, `git-hooks.hooks`, etc. in `devenv.nix` requires the corresponding flake inputs to be registered with `devenv`.
+
+**Solution:** Run these commands after adding language/hook config:
+```bash
+devenv inputs add rust-overlay github:oxalica/rust-overlay --follows nixpkgs
+devenv inputs add git-hooks github:cachix/git-hooks.nix --follows nixpkgs
+```
+
+### Issue: `buildRustPackage` vs `crane` tradeoff
+
+**Note:** `buildRustPackage` (built into nixpkgs) is simpler and needs no extra tool, but every dep change triggers a full rebuild. `crane` (from `github:ipetkov/crane`) gives incremental dep compilation at the cost of a separate tool and config split.
+
+Choose based on how often your Rust dependencies change. For most projects, `buildRustPackage` is sufficient.
+
 ### Issue: `devenv: command not found`
 
 **Solution:** Install devenv:
@@ -684,7 +773,13 @@ nix develop  # Still works, devenv is integrated into flake outputs
 - [ ] Add `nixConfig` for devenv cachix
 - [ ] Restructure `flake.nix` outputs to use `flake-parts.lib.mkFlake`
 - [ ] Create `devenv.nix` with appropriate language/services
-- [ ] Update `.gitignore` (add `.devenv/`)
+- [ ] Install latest devenv: `nix profile install github:cachix/devenv/latest`
+- [ ] Install `use_devenv` direnv function -> `~/.config/direnv/lib/devenv.sh`
+- [ ] Register devenv inputs: `devenv inputs add <name> <url> --follows nixpkgs`
+- [ ] Add `nix2container` input to flake.nix (required by devenv internally)
+- [ ] Set `cachix.enable = false` if you have system-level cache config
+- [ ] Build from devenv: `nix build .#packages.<system>.default`
+- [ ] Update `.gitignore` (add `.devenv/`, `.pre-commit-config.yaml`)
 - [ ] Update `AGENTS.md` with new commands
 - [ ] Run `nix flake update`
 - [ ] Run `nix flake check`
