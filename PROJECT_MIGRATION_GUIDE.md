@@ -142,6 +142,8 @@ Create a new `devenv.nix` file in the project root. Choose the appropriate templ
 
 ```nix
 { pkgs, config, ... }: {
+  cachix.enable = false;
+
   languages.python = {
     enable = true;
     venv.enable = true;
@@ -176,6 +178,8 @@ Create a new `devenv.nix` file in the project root. Choose the appropriate templ
 
 ```nix
 { pkgs, ... }: {
+  cachix.enable = false;
+
   languages.rust = {
     enable = true;
     channel = "stable";
@@ -208,6 +212,8 @@ Create a new `devenv.nix` file in the project root. Choose the appropriate templ
 
 ```nix
 { pkgs, ... }: {
+  cachix.enable = false;
+
   languages.go.enable = true;
 
   enterShell = ''
@@ -230,6 +236,8 @@ Create a new `devenv.nix` file in the project root. Choose the appropriate templ
 
 ```nix
 { pkgs, ... }: {
+  cachix.enable = false;
+
   languages.javascript = {
     enable = true;
     package = pkgs.nodejs_22;
@@ -256,6 +264,8 @@ Create a new `devenv.nix` file in the project root. Choose the appropriate templ
 
 ```nix
 { pkgs, ... }: {
+  cachix.enable = false;
+
   packages = with pkgs; [
     jq
     yq
@@ -276,6 +286,8 @@ Create a new `devenv.nix` file in the project root. Choose the appropriate templ
 
 ```nix
 { pkgs, ... }: {
+  cachix.enable = false;
+
   languages.go.enable = true;
   languages.rust = {
     enable = true;
@@ -358,7 +370,15 @@ Add devenv-specific entries:
 # Add these lines to existing .gitignore
 .devenv/
 .devenv.flake.nix
+.pre-commit-config.yaml
 ```
+
+> **Note:** `devenv` auto-generates a `container-shell` package that requires the
+> `mk-shell-bin` flake input. Ensure you add the following to your `flake.nix` inputs:
+>
+> ```nix
+> mk-shell-bin.url = "github:rrbutani/nix-mk-shell-bin";
+> ```
 
 ---
 
@@ -398,7 +418,22 @@ nix flake update
 
 # 2. Check flake evaluates
 nix flake check
+```
 
+> **Troubleshooting:** `nix flake check` may fail on auto-generated `container-*`
+> packages (`container-processes`, `container-shell`) due to `nodePackages`
+> being removed from recent nixpkgs (moved to top-level `pkgs.*`).
+>
+> **Fix:** Replace any `pkgs.nodePackages.<tool>` references with `pkgs.<tool>`
+> (e.g., `pkgs.prettier` instead of `pkgs.nodePackages.prettier`). If the issue
+> persists, suppress the container packages entirely in `flake.nix`:
+>
+> ```nix
+> packages."container-processes" = pkgs.lib.mkForce pkgs.emptyDirectory;
+> packages."container-shell" = pkgs.lib.mkForce pkgs.emptyDirectory;
+> ```
+
+```bash
 # 3. Enter the shell
 devenv shell
 
@@ -762,6 +797,65 @@ Or use via nix develop:
 
 ```bash
 nix develop  # Still works, devenv is integrated into flake outputs
+```
+
+### Issue: `enterShell` welcome message does not print
+
+**Problem:** `enterShell` is defined in `flake.nix` under `devenv.shells.default`, but direnv suppresses its output.
+
+**Solution:** Move `enterShell` to `devenv.nix` as a **top-level attribute** (not nested). This is the standard devenv pattern and ensures the message prints on every shell entry:
+
+```nix
+# devenv.nix (correct)
+{ pkgs, ... }: {
+  enterShell = ''
+    echo "Welcome to my project"
+  '';
+}
+```
+
+Do **not** put `enterShell` in `flake.nix` under `devenv.shells.default`.
+
+### Issue: `.envrc` should only be `use devenv`
+
+**Problem:** Adding `echo` statements, environment checks, or other logic to `.envrc` can interfere with devenv's shell initialization.
+
+**Solution:** Keep `.envrc` to a single line:
+```bash
+use devenv
+```
+
+All welcome messages, environment variable setup, and hook installation belong in `devenv.nix` via `enterShell`, `env.<VAR>`, and `git-hooks.hooks`.
+
+### Issue: `git-hooks` hooks don't activate despite flake input
+
+**Problem:** Adding `git-hooks` as a `flake.nix` input is NOT sufficient. The `devenv` CLI must also register the input internally for the hooks module to work.
+
+**Solution:** Run the following command after adding the flake input:
+```bash
+devenv inputs add git-hooks github:cachix/git-hooks.nix --follows nixpkgs
+```
+
+If `devenv` cannot write to the project directory (read-only store), skip `git-hooks` and install hooks manually in `enterShell` instead.
+
+### Issue: `devenv.root` causes read-only filesystem errors
+
+**Problem:** Setting `devenv.root = toString ./.` in `flake.nix` resolves to a Nix store path at evaluation time. Devenv then tries to create `.devenv/` there and fails with a read-only filesystem error.
+
+**Solution:** **Remove `devenv.root` entirely from `flake.nix`.** Devenv 2.x automatically detects the project root at runtime via `direnv-export`. Ensure `.envrc` uses `use devenv` (not `use flake`).
+
+### Issue: Auto-generated `container-*` packages fail on nodePackages removal
+
+**Problem:** Devenv auto-generates `container-processes` and `container-shell` packages that internally reference `nodePackages` (e.g., `pkgs.nodePackages.prettier`). Recent nixpkgs removed these in favor of top-level packages (`pkgs.prettier`), causing evaluation failures.
+
+**Solution (preferred):** Replace all `pkgs.nodePackages.<tool>` references with the equivalent `pkgs.<tool>` throughout your flake and devenv configuration.
+
+**Solution (alternative):** Suppress the offending packages in `flake.nix`:
+```nix
+perSystem = { pkgs, ... }: {
+  packages."container-processes" = pkgs.lib.mkForce pkgs.emptyDirectory;
+  packages."container-shell" = pkgs.lib.mkForce pkgs.emptyDirectory;
+};
 ```
 
 ---

@@ -113,6 +113,7 @@ devenv modules:
         # Root dev shell for template development
         devenv.shells.default = {
           name = "golden-template";
+          cachix.enable = false;
 
           packages = with pkgs; [
             nixfmt
@@ -162,6 +163,21 @@ devenv modules:
 - Scripts become first-class citizens (exposed in PATH)
 - Better multi-system support
 
+> **Caution — `devenv.root` in devenv 2.x:**
+>
+> Do NOT set `devenv.root = toString ./.` in `flake.nix` when using devenv 2.x
+> with `use devenv` in `.envrc`. Devenv 2.x auto-detects the project root at
+> runtime via `direnv-export`. Setting it explicitly resolves to a read-only Nix
+> store path at evaluation time and will cause filesystem errors.
+>
+> **Note — `enterShell` location:**
+>
+> For projects that use a separate `devenv.nix` file (recommended), place
+> `enterShell` as a top-level attribute in `devenv.nix` rather than nesting it
+> inside `devenv.shells.default` in `flake.nix`. The `devenv.nix` location
+> ensures the welcome message prints reliably; when placed in `flake.nix`,
+> direnv may suppress `enterShell` output.
+
 ---
 
 ### Phase 2: Template Conversions
@@ -180,6 +196,8 @@ devenv modules:
 ```nix
 # devenv.nix
 { pkgs, config, ... }: {
+  cachix.enable = false;
+
   languages.python = {
     enable = true;
     venv.enable = true;
@@ -257,6 +275,8 @@ devenv modules:
 
 ```nix
 { pkgs, ... }: {
+  cachix.enable = false;
+
   languages.rust = {
     enable = true;
     channel = "stable";
@@ -299,6 +319,8 @@ devenv modules:
 
 ```nix
 { pkgs, ... }: {
+  cachix.enable = false;
+
   languages.go = {
     enable = true;
     package = pkgs.go_1_22;  # Version pinning
@@ -333,10 +355,12 @@ devenv modules:
 
 ```nix
 { pkgs, ... }: {
+  cachix.enable = false;
+
   languages.javascript = {
     enable = true;
     package = pkgs.nodejs_22;
-    npm.install.enable = true;  # Auto-install on shell entry
+    npm.install.enable = true;  // Auto-install on shell entry
   };
 
   enterShell = ''
@@ -369,6 +393,8 @@ devenv modules:
 
 ```nix
 { pkgs, ... }: {
+  cachix.enable = false;
+
   packages = with pkgs; [
     jq
     yq
@@ -405,6 +431,8 @@ devenv modules:
 
 ```nix
 { pkgs, config, ... }: {
+  cachix.enable = false;
+
   packages = with pkgs; [
     docker
     skopeo
@@ -444,6 +472,8 @@ For projects that export NixOS modules (like your `loft` tool):
 ```nix
 # devenv.nix
 { pkgs, lib, config, ... }: {
+  cachix.enable = false;
+
   # Project metadata
   options.loftProject = {
     version = lib.mkOption { type = lib.types.str; default = "0.1.0"; };
@@ -518,6 +548,8 @@ For projects that export NixOS modules (like your `loft` tool):
 ```nix
 # devenv.nix
 { pkgs, ... }: {
+  cachix.enable = false;
+
   languages = {
     javascript.enable = true;
     typescript.enable = true;
@@ -570,6 +602,8 @@ This is the pattern we settled on after the loft migration. It provides single-s
 ```nix
 # devenv.nix - single source for everything
 { pkgs, config, ... }: {
+  cachix.enable = false;
+
   languages.rust.enable = true;     # Language tooling (also used by build)
 
   packages = with pkgs; [ ... ];    # Dev-only tools
